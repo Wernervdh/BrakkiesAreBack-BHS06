@@ -4,9 +4,9 @@
 
 Reunion web app for Brackenfell High School, Matric 2006, 20-year reunion. Guests scan a QR code, check in (name + surname + email, no password) and share photos, notes and Then & Now pictures live. Original (partly outdated) spec: [REUNION_APP_SPEC.md](REUNION_APP_SPEC.md).
 
-## ⛔ Current status: production CLOSED (since 2026-10-17, owner's request)
-- `frontend/src/app/app-status.ts` → `APP_CLOSED = true`: every route shows `components/closed/closed.component.ts` (bilingual "closed for now" page). Initial navigation is disabled (`withDisabledInitialNavigation`), so no guard, session or Supabase call runs. **All data is kept** (7 guest check-ins, settings, codes, activity log).
-- **To reopen:** set `APP_CLOSED = false`, `npx ng build`, push to `main`. Nothing else is needed.
+## Production on/off switch
+- Status: **OPEN** (briefly closed and reopened on 2026-10-17 at the owner's request; no data was touched).
+- `frontend/src/app/app-status.ts` → `APP_CLOSED`. `true`: every route shows `components/closed/closed.component.ts` (bilingual "closed for now" page) and initial navigation is disabled (`withDisabledInitialNavigation`), so no guard, session or Supabase call runs; all data is kept. `false`: normal app. Change, `npx ng build`, push to `main`.
 
 ## Stack & deployment
 - `frontend/`: Angular 19 standalone components + signals, Tailwind 3, `@supabase/supabase-js`, `fflate` (ZIP). No server code.
