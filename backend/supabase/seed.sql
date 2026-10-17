@@ -1,12 +1,13 @@
--- Clean initialization for BrakkeBack BHS '06 20-Year Reunion
--- Class of 2006 (Brackenfell High School)
-
-TRUNCATE TABLE public.photos CASCADE;
-TRUNCATE TABLE public.messages CASCADE;
-TRUNCATE TABLE public.then_now_profiles CASCADE;
-TRUNCATE TABLE public.profiles CASCADE;
-
--- Insert single organizer / admin user
-INSERT INTO public.profiles (display_name, is_organizer) VALUES
-  ('06BrakkieAdmin', true)
-ON CONFLICT DO NOTHING;
+-- BrakkeBack BHS '06 - post-migration setup
+-- There is no seed data: guests create their own profiles by checking in.
+--
+-- Set (or rotate) the organiser code in the Supabase SQL editor.
+-- Do NOT commit the real code - this repository is public.
+--
+--   select private.set_organizer_code('replace-with-a-long-secret-code');
+--
+-- Organisers then open the app > menu > "Organiser access" and enter the code.
+-- An organiser can also grant organiser rights to other guests in "Who's Here".
+--
+-- To revoke someone's rights from SQL:
+--   update public.profiles set is_organizer = false where display_name = 'Name Surname';

@@ -1,16 +1,16 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { UiOverlayComponent } from './components/shared/ui-overlay.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, UiOverlayComponent],
   template: `
-    <main class="min-h-screen bg-[#070f1e] text-slate-100 flex flex-col font-sans">
-      <router-outlet></router-outlet>
-    </main>
+    <div class="min-h-dvh bg-brakke-deep text-slate-100 flex flex-col">
+      <router-outlet />
+    </div>
+    <app-ui-overlay />
   `
 })
-export class AppComponent {
-  title = "'06 BrakkiesAreBack BHS";
-}
+export class AppComponent {}

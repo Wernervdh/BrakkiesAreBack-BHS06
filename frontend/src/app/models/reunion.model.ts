@@ -1,19 +1,25 @@
 export interface Profile {
   id: string;
-  created_at?: string;
+  created_at: string;
   display_name: string;
-  email?: string | null;
-  is_organizer?: boolean;
+  is_organizer: boolean;
 }
 
 export interface Photo {
   id: string;
   created_at: string;
+  owner_id: string;
   author_name: string;
-  prompt_tag: string;
-  image_url: string;
+  prompt_tag: PhotoPrompt;
+  caption: string | null;
+  image_path: string;
   likes_count: number;
-  is_approved: boolean;
+  /** On the organisers' Facebook shortlist. */
+  shortlisted: boolean;
+  /** Profile ids of tagged guests (from photo_tags). */
+  tagged_ids: string[];
+  /** Public URL, derived client-side from image_path. */
+  url: string;
 }
 
 export type MessageCategory = 'thank_you' | 'memory' | 'prediction_30th';
@@ -21,39 +27,46 @@ export type MessageCategory = 'thank_you' | 'memory' | 'prediction_30th';
 export interface Message {
   id: string;
   created_at: string;
+  owner_id: string;
   author_name: string;
   content: string;
   category: MessageCategory;
+  /** Profile ids of tagged guests (from message_tags). */
+  tagged_ids: string[];
 }
 
-export interface ThenNowProfile {
+export interface ThenNowEntry {
   id: string;
-  student_name: string;
-  yearbook_image_url: string;
-  current_image_url: string;
-  votes_most_changed: number;
-}
-
-export interface UploadPhotoPayload {
-  file: File;
+  created_at: string;
+  owner_id: string;
   author_name: string;
-  prompt_tag: string;
+  then_path: string;
+  now_path: string;
+  votes_count: number;
+  /** Public URLs, derived client-side from the paths. */
+  then_url: string;
+  now_url: string;
 }
 
 export const PHOTO_PROMPTS = [
   'Mid-laugh',
-  'Then & Now',
   'Unchanged',
   'Best Dance Move',
   'Group Hug',
   'Brakkie Pride',
-  'Golden Oldies'
+  'Golden Oldies',
+  'Squad'
 ] as const;
 
-export type PhotoPrompt = typeof PHOTO_PROMPTS[number];
+export type PhotoPrompt = (typeof PHOTO_PROMPTS)[number];
 
-export interface VoteRecord {
-  photos: string[];
-  messages: string[];
-  thenNow: string[];
-}
+export const MESSAGE_CATEGORIES: { value: MessageCategory; label: string; icon: string }[] = [
+  { value: 'thank_you', label: 'Thank You', icon: '🙏' },
+  { value: 'memory', label: 'Memory', icon: '💭' },
+  { value: 'prediction_30th', label: '30th Prediction', icon: '🔮' }
+];
+
+export const MESSAGE_MAX_LENGTH = 500;
+export const CAPTION_MAX_LENGTH = 140;
+
+export const MAX_TAGS = 20;

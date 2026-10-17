@@ -1,23 +1,9 @@
-# BrakkeBack BHS '06 - Backend Setup (Supabase)
+# Backend: Supabase
 
-This backend folder holds the Supabase infrastructure configuration, database migrations, seed data, and Edge Functions for the **BrakkeBack BHS '06 (Matrix 2006 • 20 Jaar Reünie)** application.
+The app has no server of its own; Supabase is the backend (Postgres + Row Level Security, anonymous Auth, Realtime, Storage).
 
-## Directory Structure
-- `supabase/migrations/`: SQL migration files defining `profiles`, `photos`, `messages`, `then_now_profiles`, RLS policies, RPC functions, and realtime replication.
-- `supabase/seed.sql`: Realistic starter data for testing the Brackenfell High 20-year reunion feed.
-- `supabase/functions/post-event-digest/`: Supabase Edge function for post-reunion email digests using Resend.
-- `.env.example`: Template for environment variables.
+- `supabase/migrations/20261017000000_secure_rebuild.sql`: the full schema, security policies, RPC functions, realtime and storage setup. Re-runnable. **Running it deletes all app data.**
+- `supabase/migrations/20261016000000_init_reunion_schema.sql`: the original (insecure) schema, kept for history. The rebuild drops everything it created.
+- `supabase/seed.sql`: how to set the organiser code.
 
-## How to Apply to Supabase
-1. **Via Supabase CLI:**
-   ```bash
-   supabase init
-   supabase link --project-ref <your-project-ref>
-   supabase db push
-   supabase db reset --seed # optionally seed data
-   ```
-
-2. **Via Supabase Dashboard SQL Editor:**
-   - Copy and paste the contents of `supabase/migrations/20261016000000_init_reunion_schema.sql` into the Supabase SQL editor and execute.
-   - Run `supabase/seed.sql` to populate sample memories and photos.
-   - Verify that the storage bucket `reunion-media` is marked public.
+See the setup steps in the root [README.md](../README.md#setup-one-time-supabase-dashboard).
