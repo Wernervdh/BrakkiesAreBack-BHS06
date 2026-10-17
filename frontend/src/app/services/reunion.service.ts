@@ -414,6 +414,22 @@ export class ReunionService {
     this.thenNow.update((list) => list.filter((e) => e.owner_id !== profile.id));
   }
 
+  /** What "Leave & delete my data" would delete for the current guest. */
+  async countMyContent(): Promise<{ photos: number; notes: number; thenNow: boolean; hearts: number; votes: number }> {
+    const uid = this.session.userId();
+    const [photos, notes] = await Promise.all([
+      this.supabase.from('photos').select('id', { count: 'exact', head: true }).eq('owner_id', uid),
+      this.supabase.from('messages').select('id', { count: 'exact', head: true }).eq('owner_id', uid)
+    ]);
+    return {
+      photos: photos.count ?? this.photos().filter((p) => p.owner_id === uid).length,
+      notes: notes.count ?? this.messages().filter((m) => m.owner_id === uid).length,
+      thenNow: this.thenNow().some((e) => e.owner_id === uid),
+      hearts: this.likedPhotoIds().size,
+      votes: this.votedEntryIds().size
+    };
+  }
+
   /** Deletes every uploaded file of a guest (own files, or any guest's files for organisers). */
   async removeUserFiles(userId: string): Promise<void> {
     const bucket = this.supabase.storage.from(STORAGE_BUCKET);

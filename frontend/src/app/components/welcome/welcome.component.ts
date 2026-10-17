@@ -112,14 +112,21 @@ import { isValidEmail, isValidFullName, normalizeDisplayName } from '../../utils
             </button>
           </form>
         </section>
+
+        <div class="mt-4 card p-4 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-bold text-white">Reunion committee?</p>
+            <p class="text-xs text-slate-400">Log in with the organiser code to moderate.</p>
+          </div>
+          <button type="button" class="btn-secondary shrink-0 px-4 py-2.5" (click)="orgLoginOpen.set(true)">
+            🛡️ Organiser login
+          </button>
+        </div>
       </main>
 
       <footer class="relative w-full max-w-md text-center text-xs text-slate-400 space-y-2">
         <a routerLink="/about" class="inline-block font-semibold text-brakke-gold hover:underline">About this app &amp; how it works</a>
         <p>No app download or password needed.</p>
-        <button type="button" class="text-slate-500 hover:text-slate-300 underline underline-offset-2" (click)="orgLoginOpen.set(true)">
-          Organiser login
-        </button>
       </footer>
 
       @if (orgLoginOpen()) {
@@ -149,6 +156,8 @@ export class WelcomeComponent {
         return 'You were logged out, maybe because you logged in on another phone. Check in with the same name and email to continue.';
       case 'removed':
         return 'An organiser removed your check-in. You can check in again below.';
+      case 'organiser_logged_out':
+        return 'You are logged out as organiser. Use Organiser login with the code to log in again.';
       default:
         return '';
     }

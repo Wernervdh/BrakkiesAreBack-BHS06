@@ -6,12 +6,16 @@ export interface Toast {
   kind: 'info' | 'success' | 'error';
 }
 
+export type ChoiceResult = 'confirm' | 'alternative' | 'cancel';
+
 export interface ConfirmRequest {
   title: string;
   message: string;
   confirmLabel: string;
   danger: boolean;
-  resolve: (ok: boolean) => void;
+  /** Optional safer alternative, shown as the highlighted first button. */
+  alternativeLabel?: string;
+  resolve: (result: ChoiceResult) => void;
 }
 
 /** App-wide toasts and confirmation dialogs (rendered by UiOverlayComponent). */
@@ -39,17 +43,29 @@ export class UiService {
     this.toasts.update((list) => list.filter((t) => t.id !== id));
   }
 
-  confirm(options: { title: string; message: string; confirmLabel?: string; danger?: boolean }): Promise<boolean> {
-    this.confirmRequest()?.resolve(false);
+  async confirm(options: { title: string; message: string; confirmLabel?: string; danger?: boolean }): Promise<boolean> {
+    return (await this.choose(options)) === 'confirm';
+  }
+
+  /** Confirmation with an optional safer alternative button. */
+  choose(options: {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    danger?: boolean;
+    alternativeLabel?: string;
+  }): Promise<ChoiceResult> {
+    this.confirmRequest()?.resolve('cancel');
     return new Promise((resolve) => {
       this.confirmRequest.set({
         title: options.title,
         message: options.message,
         confirmLabel: options.confirmLabel ?? 'Confirm',
         danger: options.danger ?? false,
-        resolve: (ok) => {
+        alternativeLabel: options.alternativeLabel,
+        resolve: (result) => {
           this.confirmRequest.set(null);
-          resolve(ok);
+          resolve(result);
         }
       });
     });

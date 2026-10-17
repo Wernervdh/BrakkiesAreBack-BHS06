@@ -4,9 +4,8 @@ import { Router } from '@angular/router';
 import { SessionService } from '../../services/session.service';
 import { UiService } from '../../services/ui.service';
 import { friendlyError } from '../../utils/errors';
-import { normalizeDisplayName } from '../../utils/format';
 
-/** Organiser (moderator) login from the welcome page: name + organiser code, no email. */
+/** Organiser (moderator) login from the welcome page: only the organiser code. */
 @Component({
   selector: 'app-organizer-login-modal',
   standalone: true,
@@ -23,23 +22,11 @@ import { normalizeDisplayName } from '../../utils/format';
         </div>
 
         <p class="mt-4 text-sm text-slate-300 leading-relaxed">
-          Organiser accounts are for moderating: they can view everything and remove posts that aren't appropriate,
-          but cannot post, heart or vote. Want to join in as yourself too? Check in as a guest on another phone or browser.
+          Organisers can view everything and remove photos, notes or guests that aren't appropriate. They can't post,
+          heart or vote. Want to join in as yourself too? Check in as a guest on another phone or browser.
         </p>
 
         <form (ngSubmit)="submit()" class="mt-4 space-y-4" novalidate>
-          <div>
-            <label for="orgName" class="label">Organiser name</label>
-            <input
-              id="orgName"
-              name="orgName"
-              class="input"
-              [(ngModel)]="name"
-              placeholder="e.g. Werner – Organiser"
-              autocomplete="off"
-              maxlength="60"
-            />
-          </div>
           <div>
             <label for="orgCode" class="label">Organiser code</label>
             <input
@@ -51,6 +38,7 @@ import { normalizeDisplayName } from '../../utils/format';
               autocomplete="off"
               autocapitalize="off"
               spellcheck="false"
+              autofocus
             />
           </div>
 
@@ -77,7 +65,6 @@ export class OrganizerLoginModalComponent {
   readonly closed = output<void>();
   readonly busy = signal(false);
   readonly errorMessage = signal('');
-  name = '';
   code = '';
 
   close(): void {
@@ -85,11 +72,6 @@ export class OrganizerLoginModalComponent {
   }
 
   async submit(): Promise<void> {
-    const name = normalizeDisplayName(this.name);
-    if (name.length < 3) {
-      this.errorMessage.set('Please enter a name of at least 3 characters.');
-      return;
-    }
     if (!this.code.trim()) {
       this.errorMessage.set('Please enter the organiser code.');
       return;
@@ -97,7 +79,7 @@ export class OrganizerLoginModalComponent {
     this.busy.set(true);
     this.errorMessage.set('');
     try {
-      await this.session.organizerLogin(name, this.code.trim());
+      await this.session.organizerLogin(this.code.trim());
       this.closed.emit();
       await this.router.navigate(['/feed']);
       this.ui.success('Logged in as organiser. 🛡️');

@@ -9,8 +9,14 @@ export const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
 const LAST_ACTIVE_KEY = 'brakke_last_active';
 const CHECK_EVERY_MS = 60 * 1000;
 
+/** 4 easy-to-read characters, e.g. "7F3K", for organiser session names. */
+function shortCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => chars[b % chars.length]).join('');
+}
+
 /** Why the guest is back on the welcome page (shown there). */
-export type SessionNotice = 'logged_out' | 'inactive' | 'signed_out' | 'removed' | null;
+export type SessionNotice = 'logged_out' | 'inactive' | 'signed_out' | 'removed' | 'organiser_logged_out' | null;
 
 /**
  * Guest identity. Each browser signs in anonymously with Supabase Auth and the database links
@@ -64,6 +70,8 @@ export class SessionService {
     this.authUid = data.session?.user.id ?? null;
     if (!this.authUid) return;
     if (this.isIdle()) {
+      // Load the profile first so an organiser session is removed rather than just unlinked.
+      await this.refreshProfile().catch(() => null);
       await this.logout('inactive');
       return;
     }
@@ -110,35 +118,45 @@ export class SessionService {
   }
 
   /**
-   * Organiser (moderator) login, or logging back in: organiser name + organiser code, no email.
+   * Organiser (moderator) login with only the organiser code. Each login gets its own
+   * organiser session named e.g. "Organiser 7F3K"; logging out removes it again.
    * Organiser accounts can view and delete, but never post, heart or vote.
    */
-  async organizerLogin(displayName: string, code: string): Promise<Profile> {
+  async organizerLogin(code: string): Promise<Profile> {
     await this.ensureLogin();
-    const { data, error } = await this.supabase
-      .rpc('organizer_login', { p_display_name: normalizeDisplayName(displayName), p_code: code })
-      .single();
-    if (error) {
-      if (/already checked in/.test(error.message)) {
-        throw new UserFacingError('That name is already used by a guest. Try e.g. "Werner – Organiser".');
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data, error } = await this.supabase
+        .rpc('organizer_login', { p_display_name: `Organiser ${shortCode()}`, p_code: code })
+        .single();
+      if (error) {
+        if (/already checked in/.test(error.message)) continue; // name clash: try another suffix
+        throw error;
       }
-      throw error;
+      const profile = data as Profile | null;
+      if (!profile?.id) throw new UserFacingError('That organiser code is not correct.');
+      return this.loggedIn(profile);
     }
-    const profile = data as Profile | null;
-    if (!profile?.id) throw new UserFacingError('That organiser code is not correct.');
-    return this.loggedIn(profile);
+    throw new UserFacingError('Could not log in. Please try again.');
   }
 
-  /** Logs this device out. Photos, notes, hearts and votes are kept; checking in again restores them. */
+  /**
+   * Logs this device out. Guests keep their photos, notes, hearts and votes (checking in again
+   * restores them). Organiser sessions have nothing to keep, so they are removed.
+   */
   async logout(reason: Exclude<SessionNotice, null> = 'logged_out'): Promise<void> {
+    const organiserId = this.isOrganizer() ? this.userId() : null;
     this.leaving = true;
     try {
-      await this.supabase.rpc('end_session');
+      if (organiserId) {
+        await this.supabase.from('profiles').delete().eq('id', organiserId);
+      } else {
+        await this.supabase.rpc('end_session');
+      }
       await this.supabase.auth.signOut();
     } finally {
       this.leaving = false;
       this.clear();
-      this.notice.set(reason);
+      this.notice.set(organiserId ? 'organiser_logged_out' : reason);
     }
   }
 

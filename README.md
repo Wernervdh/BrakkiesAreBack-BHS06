@@ -11,18 +11,18 @@ Guests scan a QR code, check in on their phone (no app, no password) and share t
 1. **Scan the QR code** at the venue (or open the link).
 2. **Check in** with your name, surname and email. Your phone becomes your "account". Each name and each email can check in once.
    - The email is only used to keep one check-in per person. The app stores only a scrambled fingerprint of it, never the address itself. Nobody can see it, and the app never sends email.
-3. **📸 Paparazzi**: tap *Snap* to take or choose a photo, pick a theme, add a caption and tag classmates. Give photos a ❤️ (one per person; tap again to undo).
+3. **📸 Paparazzi**: tap *Snap* to take or choose a photo, pick a theme, add a caption and tag classmates (start typing, e.g. "W", and pick from the suggestions: only checked-in classmates are suggested). Give photos a ❤️ (one per person; tap again to undo).
 4. **💬 Time Capsule**: write a thank-you, a memory or a prediction for the 30th, and tag classmates.
 5. **🎭 Then & Now**: post your 2006 matric photo next to a selfie from tonight. Everyone can vote once per entry for "Most Changed" (not for yourself).
 6. **👥 Who's Here**: see who has checked in.
 7. You can delete your own posts any time and remove your tag from someone else's post.
 8. **☰ → Log out** keeps everything you posted. After **30 minutes without activity** you're logged out automatically (nothing is deleted). To log back in, on any phone, check in with **exactly the same name and email**. One phone at a time: logging in elsewhere logs out the other phone.
-9. **☰ → Leave & delete my data** removes you and everything you posted, permanently.
+9. **☰ → Leave & delete my data** removes you and everything you posted, permanently. It first shows exactly what will be deleted and offers "Just log out (keep everything)" instead.
 
 ### For organisers
-- **Log in:** on the welcome page tap **Organiser login**, enter a name (e.g. "Werner – Organiser") and the organiser code. No email needed. **☰ → Log out** when done; log back in later with the same organiser name and the code.
+- **Log in:** on the welcome page tap the **🛡️ Organiser login** button (under the check-in card) and enter **only the organiser code**. No name or email needed; the session gets a name like "Organiser 7F3K". **☰ → Log out** ends the organiser session; log in again any time with the code.
 - **Moderator only:** organiser accounts can view everything and remove what isn't appropriate, but **cannot post, upload, heart or vote** (enforced by the database). To join in as yourself, check in as a normal guest on another phone or browser.
-- **Moderate:** delete any photo, note or Then & Now entry (🗑️); remove a guest (this deletes **everything** they posted) or another organiser.
+- **Moderate:** delete any photo, note or Then & Now entry (🗑️); remove a guest (this deletes **everything** they posted). Who's Here shows classmates only; organisers also see an "Organisers logged in" list where they can end an unknown organiser session.
 - **📖 The Story:** a chronological album of the whole night, hour by hour. It stays hidden until an organiser publishes it in ☰ → *Organiser tools*. Organisers can preview it first.
 - **📘 Facebook pack:** ☰ → *Organiser tools* → *Open Facebook pack*. Tick the photos that should go to Facebook (the shortlist is shared by all organisers), then *Download ZIP*. It contains the photos plus `captions.csv` with each caption and who to tag. Email, WhatsApp or Google Drive the ZIP to whoever posts in the class Facebook group. (Facebook doesn't let apps post into groups or tag people automatically.)
 - **Exports:** guest list, notes and photo list (with links) as CSV for Excel or Google Sheets.

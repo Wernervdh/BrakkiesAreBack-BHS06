@@ -24,26 +24,36 @@ import { UiService } from '../../services/ui.service';
     </div>
 
     @if (ui.confirmRequest(); as req) {
-      <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm" (click)="req.resolve(false)">
+      <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm" (click)="req.resolve('cancel')">
         <div
           role="alertdialog"
           aria-modal="true"
-          class="w-full max-w-sm card p-6 text-center space-y-4"
+          class="w-full max-w-sm card p-6 text-center space-y-4 bg-brakke-navy"
           (click)="$event.stopPropagation()"
         >
           <h3 class="text-base font-bold text-white">{{ req.title }}</h3>
-          <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{{ req.message }}</p>
-          <div class="flex gap-3 pt-2">
-            <button type="button" class="btn-secondary flex-1" (click)="req.resolve(false)">Cancel</button>
-            <button
-              type="button"
-              class="flex-1"
-              [class]="req.danger ? 'btn-danger' : 'btn-primary'"
-              (click)="req.resolve(true)"
-            >
-              {{ req.confirmLabel }}
-            </button>
-          </div>
+          <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line text-left">{{ req.message }}</p>
+          @if (req.alternativeLabel) {
+            <div class="flex flex-col gap-2.5 pt-2">
+              <button type="button" class="btn-primary w-full" (click)="req.resolve('alternative')">{{ req.alternativeLabel }}</button>
+              <button type="button" class="w-full" [class]="req.danger ? 'btn-danger' : 'btn-secondary'" (click)="req.resolve('confirm')">
+                {{ req.confirmLabel }}
+              </button>
+              <button type="button" class="btn-secondary w-full" (click)="req.resolve('cancel')">Cancel</button>
+            </div>
+          } @else {
+            <div class="flex gap-3 pt-2">
+              <button type="button" class="btn-secondary flex-1" (click)="req.resolve('cancel')">Cancel</button>
+              <button
+                type="button"
+                class="flex-1"
+                [class]="req.danger ? 'btn-danger' : 'btn-primary'"
+                (click)="req.resolve('confirm')"
+              >
+                {{ req.confirmLabel }}
+              </button>
+            </div>
+          }
         </div>
       </div>
     }

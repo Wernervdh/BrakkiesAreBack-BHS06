@@ -222,14 +222,35 @@ export class DashboardComponent implements OnInit {
 
   async leave(): Promise<void> {
     this.menuOpen.set(false);
-    const ok = await this.ui.confirm({
-      title: 'Leave and delete your data?',
+    const counts = await this.reunion.countMyContent().catch(() => null);
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const items = counts
+      ? [
+          counts.photos ? plural(counts.photos, 'photo') : '',
+          counts.notes ? plural(counts.notes, 'note') : '',
+          counts.thenNow ? 'your Then & Now entry' : '',
+          counts.hearts ? plural(counts.hearts, 'heart') : '',
+          counts.votes ? plural(counts.votes, 'vote') : ''
+        ].filter(Boolean)
+      : [];
+    const what = items.length
+      ? 'This permanently deletes everything you did in the app:\n' + items.map((i) => `• ${i}`).join('\n')
+      : 'This permanently deletes everything you did in the app: photos, notes, Then & Now, hearts and votes.';
+
+    const choice = await this.ui.choose({
+      title: 'Are you sure?',
       message:
-        'This removes you from Who\'s Here and permanently deletes everything you posted: photos, notes, your Then & Now entry, hearts and votes.\n\nThis cannot be undone.',
-      confirmLabel: 'Delete & leave',
+        `${what}\n\nYou'll also be removed from Who's Here. This can't be undone.\n\n` +
+        'Did you just want to log out? Logging out keeps everything, and you can log back in with the same name and email.',
+      alternativeLabel: 'Just log out (keep everything)',
+      confirmLabel: 'Yes, delete everything',
       danger: true
     });
-    if (!ok) return;
+    if (choice === 'alternative') {
+      await this.logoutNow();
+      return;
+    }
+    if (choice !== 'confirm') return;
     try {
       const uid = this.session.userId();
       if (uid) await this.reunion.removeUserFiles(uid);
@@ -249,11 +270,14 @@ export class DashboardComponent implements OnInit {
     const ok = await this.ui.confirm({
       title: 'Log out?',
       message: this.session.isOrganizer()
-        ? 'Log in again any time from the welcome page with your organiser name and the organiser code.'
+        ? 'Your organiser session ends. Log in again any time from the welcome page with the organiser code.'
         : `Your photos, notes, hearts and votes stay.\n\nTo log back in, use exactly the same name and email:\n${name}`,
       confirmLabel: 'Log out'
     });
-    if (!ok) return;
+    if (ok) await this.logoutNow();
+  }
+
+  private async logoutNow(): Promise<void> {
     try {
       await this.session.logout('logged_out');
       this.reunion.stop();

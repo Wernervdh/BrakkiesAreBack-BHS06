@@ -47,14 +47,9 @@ import { initials } from '../../../utils/format';
                 </div>
                 <div class="min-w-0">
                   <p class="text-sm font-bold text-white truncate">{{ guest.display_name }}</p>
-                  <div class="flex items-center gap-1.5 mt-0.5">
-                    @if (guest.is_organizer) {
-                      <span class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-brakke-gold text-brakke-deep">Organiser</span>
-                    }
-                    @if (guest.id === session.userId()) {
-                      <span class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-brakke-surface text-slate-300 border border-brakke-line">You</span>
-                    }
-                  </div>
+                  @if (guest.id === session.userId()) {
+                    <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-brakke-surface text-slate-300 border border-brakke-line">You</span>
+                  }
                 </div>
               </div>
 
@@ -63,9 +58,28 @@ import { initials } from '../../../utils/format';
               }
             </li>
           } @empty {
-            <li class="text-center text-sm text-slate-400 py-10">No classmates match "{{ query() }}".</li>
+            <li class="text-center text-sm text-slate-400 py-10">
+              {{ query() ? 'No classmates match "' + query() + '".' : 'Nobody has checked in yet.' }}
+            </li>
           }
         </ul>
+
+        @if (session.isOrganizer()) {
+          <div class="pt-4 space-y-2.5">
+            <h3 class="text-sm font-bold text-white">🛡️ Organisers logged in <span class="font-normal text-slate-400">(only organisers see this)</span></h3>
+            @for (org of organisers(); track org.id) {
+              <div class="card p-3 flex items-center justify-between gap-3">
+                <p class="text-sm font-semibold text-slate-200 truncate">
+                  {{ org.display_name }}
+                  @if (org.id === session.userId()) { <span class="text-[10px] font-bold text-brakke-gold ml-1">YOU</span> }
+                </p>
+                @if (org.id !== session.userId()) {
+                  <button type="button" class="btn-ghost-danger shrink-0" (click)="remove(org)" aria-label="Remove organiser session">🗑️</button>
+                }
+              </div>
+            }
+          </div>
+        }
       }
     </section>
   `
@@ -81,18 +95,20 @@ export class GuestsComponent {
   readonly visible = computed(() => {
     const q = this.query().trim().toLowerCase();
     return this.reunion
-      .profiles()
+      .guests()
       .filter((p) => !q || p.display_name.toLowerCase().includes(q))
-      .sort((a, b) => Number(b.is_organizer) - Number(a.is_organizer) || a.display_name.localeCompare(b.display_name));
+      .sort((a, b) => a.display_name.localeCompare(b.display_name));
   });
+
+  readonly organisers = computed(() => this.reunion.profiles().filter((p) => p.is_organizer));
 
   async remove(guest: Profile): Promise<void> {
     const ok = await this.ui.confirm(
       guest.is_organizer
         ? {
-            title: `Remove organiser ${guest.display_name}?`,
-            message: 'They will be logged out and lose organiser access until they log in again with the organiser code.',
-            confirmLabel: 'Remove organiser',
+            title: `Remove ${guest.display_name}?`,
+            message: 'That organiser session is logged out. Whoever it was can log in again with the organiser code.',
+            confirmLabel: 'Remove',
             danger: true
           }
         : {
@@ -106,7 +122,7 @@ export class GuestsComponent {
     if (!ok) return;
     try {
       await this.reunion.removeGuest(guest);
-      this.ui.success(`${guest.display_name} and their posts were removed.`);
+      this.ui.success(guest.is_organizer ? `${guest.display_name} was removed.` : `${guest.display_name} and their posts were removed.`);
     } catch (err) {
       this.ui.error(friendlyError(err));
     }
