@@ -4,4 +4,4 @@
  * false → the reunion app runs normally.
  * Change it, build and push to main to close / reopen the live site.
  */
-export const APP_CLOSED = false;
+export const APP_CLOSED = true;

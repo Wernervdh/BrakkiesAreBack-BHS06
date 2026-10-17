@@ -3,7 +3,7 @@
 The live photo wall and guest book for the Brackenfell High School Matric class of 2006 20-year reunion.
 Guests scan a QR code, check in on their phone (no app, no password) and share the night together.
 
-> To close the app temporarily (a "closed for now" page; all data kept), set `APP_CLOSED = true` in `frontend/src/app/app-status.ts` and push to `main`; set it back to `false` to reopen.
+> ⛔ **The app is currently offline** (every address answers 503; nothing is deleted: code, Vercel project and all Supabase data are intact). To bring it back: copy `frontend/vercel.online.json` over `frontend/vercel.json`, set `APP_CLOSED = false` in `frontend/src/app/app-status.ts`, and push to `main`.
 
 **Live:** https://brakkies-are-back-bhs-06.vercel.app · **Venue QR code & printable poster:** [`docs/qr/`](docs/qr/)
 

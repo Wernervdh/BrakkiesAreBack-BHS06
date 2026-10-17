@@ -4,8 +4,13 @@
 
 Reunion web app for Brackenfell High School, Matric 2006, 20-year reunion. Guests scan a QR code, check in (name + surname + email, no password) and share photos, notes and Then & Now pictures live. Original (partly outdated) spec: [REUNION_APP_SPEC.md](REUNION_APP_SPEC.md).
 
+## ⛔ Current status: production OFFLINE (since 2026-10-17, owner's request: "bring it down, don't delete it or data")
+- `frontend/vercel.json` is the **offline** config: one legacy route answering **503 Service Unavailable** for every path (no app, no page). The normal config is kept unchanged in `frontend/vercel.online.json`. `APP_CLOSED = true` as a safety net (cached copies make no Supabase calls).
+- Nothing is deleted: Vercel project + deployments, GitHub code, Supabase project and all data (guest check-ins, codes, settings, activity log) are intact. The owner may additionally pause the Supabase project (dashboard → Settings → General → Pause; free plan restore window ~90 days).
+- **To bring it back up:** `cp frontend/vercel.online.json frontend/vercel.json`, set `APP_CLOSED = false`, `npx ng build`, push to `main` (and unpause Supabase if it was paused). Guests log back in with the same name + email; nothing is lost.
+
 ## Production on/off switch
-- Status: **OPEN** (briefly closed and reopened on 2026-10-17 at the owner's request; no data was touched).
+- Status: see above. (Earlier on 2026-10-17 the app was briefly closed and reopened; no data was touched.)
 - `frontend/src/app/app-status.ts` → `APP_CLOSED`. `true`: every route shows `components/closed/closed.component.ts` (bilingual "closed for now" page) and initial navigation is disabled (`withDisabledInitialNavigation`), so no guard, session or Supabase call runs; all data is kept. `false`: normal app. Change, `npx ng build`, push to `main`.
 
 ## Stack & deployment
