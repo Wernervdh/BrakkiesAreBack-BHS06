@@ -28,7 +28,7 @@ import { friendlyError } from '../../utils/errors';
 
         <form (ngSubmit)="submit()" class="mt-4 space-y-4" novalidate>
           <div>
-            <label for="orgCode" class="label">Organiser or super admin code</label>
+            <label for="orgCode" class="label">Organiser code</label>
             <input
               id="orgCode"
               name="code"
