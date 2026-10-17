@@ -32,6 +32,10 @@ CREATE POLICY "Allow organizers update profiles"
   ON public.profiles FOR UPDATE
   USING (true);
 
+CREATE POLICY "Allow organizers delete profiles"
+  ON public.profiles FOR DELETE
+  USING (true);
+
 -- --------------------------------------------------------
 -- Table 2: photos (Secret Agent Snaps / Paparazzi Feed)
 -- --------------------------------------------------------
@@ -60,6 +64,10 @@ CREATE POLICY "Allow public update likes and moderation"
   ON public.photos FOR UPDATE
   USING (true);
 
+CREATE POLICY "Allow organizers delete photos"
+  ON public.photos FOR DELETE
+  USING (true);
+
 -- --------------------------------------------------------
 -- Table 3: messages (Time Capsule & Wall of Fame)
 -- --------------------------------------------------------
@@ -80,6 +88,10 @@ CREATE POLICY "Allow public read messages"
 CREATE POLICY "Allow public insert messages"
   ON public.messages FOR INSERT
   WITH CHECK (true);
+
+CREATE POLICY "Allow organizers delete messages"
+  ON public.messages FOR DELETE
+  USING (true);
 
 -- --------------------------------------------------------
 -- Table 4: then_now_profiles (Face Matcher Game)
@@ -105,6 +117,10 @@ CREATE POLICY "Allow public update then_now_profiles votes"
 CREATE POLICY "Allow public insert then_now_profiles"
   ON public.then_now_profiles FOR INSERT
   WITH CHECK (true);
+
+CREATE POLICY "Allow organizers delete then_now_profiles"
+  ON public.then_now_profiles FOR DELETE
+  USING (true);
 
 -- --------------------------------------------------------
 -- Helper Functions (RPC)

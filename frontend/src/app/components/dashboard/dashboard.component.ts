@@ -33,6 +33,11 @@ type ActiveTab = 'feed' | 'messages' | 'then_now' | 'guests';
           </div>
 
           <div class="flex items-center gap-2">
+            @if (isAdmin()) {
+              <span class="text-xs px-2.5 py-1 rounded-full bg-red-500/20 text-red-300 font-bold border border-red-500/40">
+                🛡️ ADMIN
+              </span>
+            }
             <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-medium border border-slate-700/60 hidden sm:inline-block">
               👋 {{ userName() }}
             </span>
@@ -108,13 +113,24 @@ type ActiveTab = 'feed' | 'messages' | 'then_now' | 'guests';
                         </p>
                       </div>
 
-                      <button
-                        (click)="likePhoto(photo)"
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1b2d4f] hover:bg-rose-500/20 hover:text-rose-400 text-slate-200 border border-slate-700 hover:border-rose-500/40 transition active:scale-95"
-                      >
-                        <span class="text-base text-rose-500">❤️</span>
-                        <span class="text-xs font-bold font-mono">{{ photo.likes_count }}</span>
-                      </button>
+                      <div class="flex items-center gap-2">
+                        @if (isAdmin()) {
+                          <button
+                            (click)="deletePhoto(photo)"
+                            class="px-2.5 py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-bold transition flex items-center gap-1"
+                            title="Admin delete photo"
+                          >
+                            <span>🗑️</span>
+                          </button>
+                        }
+                        <button
+                          (click)="likePhoto(photo)"
+                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1b2d4f] hover:bg-rose-500/20 hover:text-rose-400 text-slate-200 border border-slate-700 hover:border-rose-500/40 transition active:scale-95"
+                        >
+                          <span class="text-base text-rose-500">❤️</span>
+                          <span class="text-xs font-bold font-mono">{{ photo.likes_count }}</span>
+                        </button>
+                      </div>
                     </div>
                   </article>
                 }
@@ -208,6 +224,15 @@ type ActiveTab = 'feed' | 'messages' | 'then_now' | 'guests';
                       <span class="text-xs font-semibold text-brakke-gold">
                         ✍️ {{ msg.author_name }}
                       </span>
+                      @if (isAdmin()) {
+                        <button
+                          (click)="deleteMessage(msg)"
+                          class="px-2 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-[11px] font-bold transition flex items-center gap-1"
+                          title="Admin delete note"
+                        >
+                          <span>🗑️ Delete</span>
+                        </button>
+                      }
                     </div>
                   </article>
                 }
@@ -277,13 +302,24 @@ type ActiveTab = 'feed' | 'messages' | 'then_now' | 'guests';
                       </div>
                     </div>
 
-                    <!-- Vote Button -->
-                    <button
-                      (click)="voteThenNow(entry)"
-                      class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-[#1b2d4f] hover:bg-brakke-gold hover:text-slate-950 text-slate-200 border border-slate-700 hover:border-brakke-gold transition flex items-center justify-center gap-2 active:scale-[0.99]"
-                    >
-                      <span>⚡ Vote Most Changed</span>
-                    </button>
+                    <!-- Vote Button & Admin Delete -->
+                    <div class="flex items-center gap-2">
+                      <button
+                        (click)="voteThenNow(entry)"
+                        class="flex-1 py-3 px-4 rounded-xl font-bold text-xs bg-[#1b2d4f] hover:bg-brakke-gold hover:text-slate-950 text-slate-200 border border-slate-700 hover:border-brakke-gold transition flex items-center justify-center gap-2 active:scale-[0.99]"
+                      >
+                        <span>⚡ Vote Most Changed</span>
+                      </button>
+                      @if (isAdmin()) {
+                        <button
+                          (click)="deleteThenNow(entry)"
+                          class="py-3 px-3 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-bold transition"
+                          title="Admin delete profile"
+                        >
+                          <span>🗑️</span>
+                        </button>
+                      }
+                    </div>
                   </div>
                 }
               </div>
@@ -337,7 +373,18 @@ type ActiveTab = 'feed' | 'messages' | 'then_now' | 'guests';
                       </div>
                     </div>
 
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" title="Active"></span>
+                    <div class="flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" title="Active"></span>
+                      @if (isAdmin() && guest.display_name !== userName()) {
+                        <button
+                          (click)="deleteProfile(guest)"
+                          class="px-2 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-bold transition"
+                          title="Admin delete guest"
+                        >
+                          <span>🗑️</span>
+                        </button>
+                      }
+                    </div>
                   </div>
                 }
               </div>
@@ -424,6 +471,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   currentTab = signal<ActiveTab>('feed');
   userName = signal<string>('Brakke Matriek');
+  isAdmin = signal<boolean>(false);
 
   // Feeds data signals
   photos = signal<Photo[]>([]);
@@ -454,6 +502,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
     this.userName.set(storedName);
+    this.isAdmin.set(this.supabaseService.isAdminUser());
 
     // Initial data loads
     this.loadPhotos();
@@ -539,20 +588,32 @@ export class DashboardComponent implements OnInit, OnDestroy {
           if (!currentFilter || currentFilter === newMsg.category) {
             this.messages.update((list) => [newMsg, ...list]);
           }
+        } else if (payload.eventType === 'DELETE') {
+          const oldMsg = payload.old as Partial<Message>;
+          this.messages.update((list) => list.filter((m) => m.id !== oldMsg.id));
         }
       })
     );
 
-    // 3. Then & Now votes
+    // 3. Then & Now votes & deletes
     this.subscriptions.add(
       this.supabaseService.onThenNowProfilesChange().subscribe((payload) => {
-        if (payload.eventType === 'UPDATE') {
+        if (payload.eventType === 'INSERT') {
+          const newEntry = payload.new as ThenNowProfile;
+          this.thenNowProfiles.update((list) => {
+            if (list.some((item) => item.id === newEntry.id)) return list;
+            return [newEntry, ...list];
+          });
+        } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as ThenNowProfile;
           this.thenNowProfiles.update((list) =>
             list
               .map((p) => (p.id === updated.id ? updated : p))
               .sort((a, b) => b.votes_most_changed - a.votes_most_changed)
           );
+        } else if (payload.eventType === 'DELETE') {
+          const oldProfile = payload.old as Partial<ThenNowProfile>;
+          this.thenNowProfiles.update((list) => list.filter((p) => p.id !== oldProfile.id));
         }
       })
     );
@@ -568,6 +629,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
             }
             return [newProfile, ...list];
           });
+        } else if (payload.eventType === 'DELETE') {
+          const oldGuest = payload.old as Partial<Profile>;
+          this.profiles.update((list) => list.filter((p) => p.id !== oldGuest.id));
         }
       })
     );
@@ -617,9 +681,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   async handleThenNowUpload(payload: { student_name: string; yearbook_file: File; current_file: File }): Promise<void> {
     try {
       const created = await this.supabaseService.uploadThenNowProfile(payload);
-      this.thenNowProfiles.update((list) => [created, ...list]);
-      // Also refresh photos feed in case it generated a collage/photo
-      this.loadPhotos();
+      this.thenNowProfiles.update((list) => {
+        if (list.some((item) => item.id === created.id)) return list;
+        return [created, ...list];
+      });
       this.isPhotoModalOpen.set(false);
     } catch (err) {
       console.error('Then & Now upload failed:', err);
@@ -661,6 +726,51 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.isMessageModalOpen.set(false);
     } catch (err) {
       console.error('Post failed:', err);
+    }
+  }
+
+  // Admin Actions
+  async deletePhoto(photo: Photo): Promise<void> {
+    if (!this.isAdmin()) return;
+    if (!confirm(`Delete photo by "${photo.author_name}"?`)) return;
+    this.photos.update((list) => list.filter((p) => p.id !== photo.id));
+    try {
+      await this.supabaseService.deletePhoto(photo.id);
+    } catch (err) {
+      console.error('Error deleting photo:', err);
+    }
+  }
+
+  async deleteMessage(message: Message): Promise<void> {
+    if (!this.isAdmin()) return;
+    if (!confirm(`Delete note by "${message.author_name}"?`)) return;
+    this.messages.update((list) => list.filter((m) => m.id !== message.id));
+    try {
+      await this.supabaseService.deleteMessage(message.id);
+    } catch (err) {
+      console.error('Error deleting message:', err);
+    }
+  }
+
+  async deleteProfile(profile: Profile): Promise<void> {
+    if (!this.isAdmin()) return;
+    if (!confirm(`Remove guest "${profile.display_name}"?`)) return;
+    this.profiles.update((list) => list.filter((p) => p.id !== profile.id));
+    try {
+      await this.supabaseService.deleteProfile(profile.id);
+    } catch (err) {
+      console.error('Error deleting profile:', err);
+    }
+  }
+
+  async deleteThenNow(profile: ThenNowProfile): Promise<void> {
+    if (!this.isAdmin()) return;
+    if (!confirm(`Delete Then & Now entry for "${profile.student_name}"?`)) return;
+    this.thenNowProfiles.update((list) => list.filter((p) => p.id !== profile.id));
+    try {
+      await this.supabaseService.deleteThenNowProfile(profile.id);
+    } catch (err) {
+      console.error('Error deleting then/now profile:', err);
     }
   }
 

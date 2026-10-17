@@ -19,91 +19,16 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
+// In-memory data store (clean start for real event)
 let profiles = [
-  { id: 'u1', display_name: 'Dirk Van Der Merwe', email: 'dirk@brakke06.co.za', is_organizer: true, created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString() },
-  { id: 'u2', display_name: 'Anri Smith', email: 'anri@brakke06.co.za', is_organizer: true, created_at: new Date(Date.now() - 1000 * 60 * 100).toISOString() },
-  { id: 'u3', display_name: 'Francois Pienaar', email: null, is_organizer: false, created_at: new Date(Date.now() - 1000 * 60 * 80).toISOString() },
-  { id: 'u4', display_name: 'Chantal Louw', email: null, is_organizer: false, created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString() }
+  { id: 'admin_1', display_name: '06BrakkieAdmin', email: null, is_organizer: true, created_at: new Date().toISOString() }
 ];
 
-// In-memory data store with realistic seed data
-let photos = [
-  {
-    id: 'p1',
-    created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    author_name: 'Dirk Van Der Merwe',
-    prompt_tag: 'Mid-laugh',
-    image_url: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&auto=format&fit=crop&q=60',
-    likes_count: 15,
-    is_approved: true
-  },
-  {
-    id: 'p2',
-    created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    author_name: 'Anri Smith',
-    prompt_tag: 'Then & Now',
-    image_url: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=800&auto=format&fit=crop&q=60',
-    likes_count: 22,
-    is_approved: true
-  },
-  {
-    id: 'p3',
-    created_at: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-    author_name: 'Francois Pienaar',
-    prompt_tag: 'Unchanged',
-    image_url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop&q=60',
-    likes_count: 9,
-    is_approved: true
-  }
-];
+let photos = [];
 
-let messages = [
-  {
-    id: 'm1',
-    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    author_name: 'Dirk Van Der Merwe',
-    content: 'Welcome everyone to our 20-Year Brackenfell High Reunion! Huge thanks to the organizing committee for all the effort.',
-    category: 'thank_you'
-  },
-  {
-    id: 'm2',
-    created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-    author_name: 'Anri Smith',
-    content: 'Remember Mr. De Klerk’s math classes and hall assemblies? So wonderful to see everyone again tonight!',
-    category: 'memory'
-  },
-  {
-    id: 'm3',
-    created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-    author_name: 'Francois Pienaar',
-    content: 'Prediction for our 30th reunion: Dirk still drives the exact same bakkie and Chantal arrives in her own helicopter.',
-    category: 'prediction_30th'
-  }
-];
+let messages = [];
 
-let thenNowProfiles = [
-  {
-    id: 'tn1',
-    student_name: 'Dirk Van Der Merwe',
-    yearbook_image_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=60',
-    current_image_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=60',
-    votes_most_changed: 4
-  },
-  {
-    id: 'tn2',
-    student_name: 'Anri Smith',
-    yearbook_image_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=60',
-    current_image_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=60',
-    votes_most_changed: 7
-  },
-  {
-    id: 'tn3',
-    student_name: 'Francois Pienaar',
-    yearbook_image_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop&q=60',
-    current_image_url: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=500&auto=format&fit=crop&q=60',
-    votes_most_changed: 12
-  }
-];
+let thenNowProfiles = [];
 
 // Multer storage for uploaded files
 const storage = multer.diskStorage({
@@ -263,6 +188,7 @@ app.post('/api/profiles', (req, res) => {
   }
 
   // Check if profile already exists by name
+  const isSpecialAdmin = display_name.trim().toLowerCase() === '06brakkieadmin';
   const existingIndex = profiles.findIndex(
     p => p.display_name.toLowerCase() === display_name.trim().toLowerCase()
   );
@@ -271,13 +197,14 @@ app.post('/api/profiles', (req, res) => {
   if (existingIndex >= 0) {
     profile = profiles[existingIndex];
     if (email) profile.email = email.trim();
+    if (isSpecialAdmin) profile.is_organizer = true;
     profile.last_active = new Date().toISOString();
   } else {
     profile = {
       id: 'u_' + Date.now(),
       display_name: display_name.trim(),
       email: email ? email.trim() : null,
-      is_organizer: false,
+      is_organizer: isSpecialAdmin,
       created_at: new Date().toISOString()
     };
     profiles = [profile, ...profiles];
@@ -285,6 +212,51 @@ app.post('/api/profiles', (req, res) => {
   }
 
   res.status(201).json(profile);
+});
+
+// Admin deletion endpoints for moderation (photos, messages, profiles)
+app.delete('/api/photos/:id', (req, res) => {
+  const targetId = req.params.id;
+  const deleted = photos.find(p => p.id === targetId);
+  if (deleted) {
+    photos = photos.filter(p => p.id !== targetId);
+    broadcast('DELETE', 'photos', deleted);
+    return res.json({ success: true, deleted });
+  }
+  res.status(404).json({ error: 'Photo not found' });
+});
+
+app.delete('/api/messages/:id', (req, res) => {
+  const targetId = req.params.id;
+  const deleted = messages.find(m => m.id === targetId);
+  if (deleted) {
+    messages = messages.filter(m => m.id !== targetId);
+    broadcast('DELETE', 'messages', deleted);
+    return res.json({ success: true, deleted });
+  }
+  res.status(404).json({ error: 'Message not found' });
+});
+
+app.delete('/api/profiles/:id', (req, res) => {
+  const targetId = req.params.id;
+  const deleted = profiles.find(p => p.id === targetId);
+  if (deleted) {
+    profiles = profiles.filter(p => p.id !== targetId);
+    broadcast('DELETE', 'profiles', deleted);
+    return res.json({ success: true, deleted });
+  }
+  res.status(404).json({ error: 'Profile not found' });
+});
+
+app.delete('/api/then-now/:id', (req, res) => {
+  const targetId = req.params.id;
+  const deleted = thenNowProfiles.find(tn => tn.id === targetId);
+  if (deleted) {
+    thenNowProfiles = thenNowProfiles.filter(tn => tn.id !== targetId);
+    broadcast('DELETE', 'then_now_profiles', deleted);
+    return res.json({ success: true, deleted });
+  }
+  res.status(404).json({ error: 'Profile not found' });
 });
 
 server.listen(PORT, '0.0.0.0', () => {

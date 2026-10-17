@@ -59,21 +59,6 @@ import { SupabaseService } from '../../services/supabase.service';
               />
             </div>
 
-            <div>
-              <label for="email" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Optional Email <span class="text-slate-400 font-normal lowercase">(for post-event photo digest)</span>
-              </label>
-              <input
-                id="email"
-                type="email"
-                [(ngModel)]="email"
-                name="email"
-                placeholder="name@example.com"
-                class="w-full px-4 py-3 bg-[#0a192f] border border-slate-700/80 rounded-2xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brakke-gold focus:border-transparent transition text-sm"
-                autocomplete="email"
-              />
-            </div>
-
             @if (errorMessage()) {
               <div class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs">
                 {{ errorMessage() }}
@@ -108,7 +93,6 @@ export class WelcomeComponent {
   private readonly supabaseService = inject(SupabaseService);
 
   displayName = '';
-  email = '';
   loading = signal(false);
   errorMessage = signal('');
 
@@ -130,7 +114,7 @@ export class WelcomeComponent {
 
     try {
       this.supabaseService.setStoredUserName(this.displayName.trim());
-      await this.supabaseService.registerProfile(this.displayName.trim(), this.email.trim());
+      await this.supabaseService.registerProfile(this.displayName.trim());
       this.router.navigate(['/feed']);
     } catch (err) {
       console.error(err);

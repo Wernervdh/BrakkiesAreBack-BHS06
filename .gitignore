@@ -7,3 +7,7 @@ backend/uploads/*
 .env
 .DS_Store
 Thumbs.db
+*.log
+frontend/serve.log
+backend/server.log
+.vscode/

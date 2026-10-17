@@ -149,6 +149,11 @@ export class SupabaseService {
     localStorage.removeItem('brakke_user_id');
   }
 
+  isAdminUser(): boolean {
+    const name = this.getStoredUserName().trim().toLowerCase();
+    return name === '06brakkieadmin';
+  }
+
   // ==========================================
   // PROFILE / GUEST REGISTRY METHODS
   // ==========================================
@@ -157,6 +162,8 @@ export class SupabaseService {
    * Registers or updates a guest profile upon entering the reunion app.
    */
   async registerProfile(displayName: string, email?: string): Promise<Profile> {
+    const isSpecialAdmin = displayName.trim().toLowerCase() === '06brakkieadmin';
+
     // 1. Post to local shared backend
     try {
       const res = await fetch(`${this.localBackendBase}/api/profiles`, {
@@ -176,7 +183,7 @@ export class SupabaseService {
         .insert({
           display_name: displayName.trim(),
           email: email?.trim() || null,
-          is_organizer: false
+          is_organizer: isSpecialAdmin
         })
         .select()
         .single();
@@ -188,7 +195,7 @@ export class SupabaseService {
         id: 'guest-' + Date.now(),
         display_name: displayName.trim(),
         email: email?.trim() || null,
-        is_organizer: false
+        is_organizer: isSpecialAdmin
       };
     }
   }
@@ -202,7 +209,7 @@ export class SupabaseService {
       const res = await fetch(`${this.localBackendBase}/api/profiles`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) return data as Profile[];
+        if (Array.isArray(data)) return data as Profile[];
       }
     } catch {}
 
@@ -213,15 +220,10 @@ export class SupabaseService {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) return data as Profile[];
+      if (!error && data) return data as Profile[];
     } catch {}
 
-    return [
-      { id: 'u1', display_name: 'Dirk Van Der Merwe', email: 'dirk@brakke06.co.za', is_organizer: true },
-      { id: 'u2', display_name: 'Anri Smith', email: 'anri@brakke06.co.za', is_organizer: true },
-      { id: 'u3', display_name: 'Francois Pienaar', is_organizer: false },
-      { id: 'u4', display_name: 'Chantal Louw', is_organizer: false }
-    ];
+    return [];
   }
 
   onProfilesChange(): Observable<RealtimePostgresChangesPayload<Profile>> {
@@ -268,7 +270,7 @@ export class SupabaseService {
       }
 
       const { data, error } = await query;
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         return data as Photo[];
       }
     } catch {}
@@ -278,7 +280,7 @@ export class SupabaseService {
       const res = await fetch(`${this.localBackendBase}/api/photos`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           return data as Photo[];
         }
       }
@@ -396,38 +398,10 @@ export class SupabaseService {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
-    return [
-      {
-        id: 'p1',
-        created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-        author_name: 'Dirk Van Der Merwe',
-        prompt_tag: 'Mid-laugh',
-        image_url: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&auto=format&fit=crop&q=60',
-        likes_count: 15,
-        is_approved: true
-      },
-      {
-        id: 'p2',
-        created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-        author_name: 'Anri Smith',
-        prompt_tag: 'Then & Now',
-        image_url: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=800&auto=format&fit=crop&q=60',
-        likes_count: 22,
-        is_approved: true
-      },
-      {
-        id: 'p3',
-        created_at: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-        author_name: 'Francois Pienaar',
-        prompt_tag: 'Unchanged',
-        image_url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop&q=60',
-        likes_count: 9,
-        is_approved: true
-      }
-    ];
+    return [];
   }
 
   private saveLocalPhoto(photo: Photo): void {
@@ -443,6 +417,92 @@ export class SupabaseService {
     const updated = list.map(p => p.id === photoId ? { ...p, likes_count: p.likes_count + 1 } : p);
     try {
       localStorage.setItem('brakke_local_photos', JSON.stringify(updated));
+    } catch {}
+  }
+
+  /**
+   * Delete a photo (Admin / Organizer feature)
+   */
+  async deletePhoto(photoId: string): Promise<void> {
+    // 1. Try local shared backend
+    try {
+      await fetch(`${this.localBackendBase}/api/photos/${photoId}`, {
+        method: 'DELETE'
+      });
+    } catch {}
+
+    // 2. Try Supabase
+    try {
+      await this.supabase.from('photos').delete().eq('id', photoId);
+    } catch {}
+
+    // 3. Clean local fallback
+    const list = this.getLocalPhotos().filter(p => p.id !== photoId);
+    try {
+      localStorage.setItem('brakke_local_photos', JSON.stringify(list));
+    } catch {}
+  }
+
+  /**
+   * Delete a message (Admin / Organizer feature)
+   */
+  async deleteMessage(messageId: string): Promise<void> {
+    // 1. Try local shared backend
+    try {
+      await fetch(`${this.localBackendBase}/api/messages/${messageId}`, {
+        method: 'DELETE'
+      });
+    } catch {}
+
+    // 2. Try Supabase
+    try {
+      await this.supabase.from('messages').delete().eq('id', messageId);
+    } catch {}
+
+    // 3. Clean local fallback
+    const list = this.getLocalMessages().filter(m => m.id !== messageId);
+    try {
+      localStorage.setItem('brakke_local_messages', JSON.stringify(list));
+    } catch {}
+  }
+
+  /**
+   * Delete a registered profile (Admin / Organizer feature)
+   */
+  async deleteProfile(profileId: string): Promise<void> {
+    // 1. Try local shared backend
+    try {
+      await fetch(`${this.localBackendBase}/api/profiles/${profileId}`, {
+        method: 'DELETE'
+      });
+    } catch {}
+
+    // 2. Try Supabase
+    try {
+      await this.supabase.from('profiles').delete().eq('id', profileId);
+    } catch {}
+  }
+
+  /**
+   * Delete a Then & Now profile (Admin / Organizer feature)
+   */
+  async deleteThenNowProfile(profileId: string): Promise<void> {
+    // 1. Try local shared backend
+    try {
+      await fetch(`${this.localBackendBase}/api/then-now/${profileId}`, {
+        method: 'DELETE'
+      });
+    } catch {}
+
+    // 2. Try Supabase
+    try {
+      await this.supabase.from('then_now_profiles').delete().eq('id', profileId);
+    } catch {}
+
+    // 3. Clean local fallback
+    const list = this.getLocalThenNowProfiles().filter(tn => tn.id !== profileId);
+    try {
+      localStorage.setItem('brakke_local_then_now', JSON.stringify(list));
     } catch {}
   }
 
@@ -474,7 +534,7 @@ export class SupabaseService {
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) return data as Message[];
+        if (Array.isArray(data)) return data as Message[];
       }
     } catch {}
 
@@ -488,7 +548,7 @@ export class SupabaseService {
       if (category) query = query.eq('category', category);
 
       const { data, error } = await query;
-      if (!error && data && data.length > 0) return data as Message[];
+      if (!error && data) return data as Message[];
     } catch {}
 
     return this.getLocalMessages(category);
@@ -554,7 +614,7 @@ export class SupabaseService {
       const res = await fetch(`${this.localBackendBase}/api/then-now`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) return data as ThenNowProfile[];
+        if (Array.isArray(data)) return data as ThenNowProfile[];
       }
     } catch {}
 
@@ -564,7 +624,7 @@ export class SupabaseService {
         .select('*')
         .order('votes_most_changed', { ascending: false });
 
-      if (!error && data && data.length > 0) return data as ThenNowProfile[];
+      if (!error && data) return data as ThenNowProfile[];
     } catch {}
 
     return this.getLocalThenNowProfiles();
@@ -631,31 +691,7 @@ export class SupabaseService {
         list = JSON.parse(raw);
       } catch {}
     }
-    if (!list || list.length === 0) {
-      list = [
-        {
-          id: 'm1',
-          created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-          author_name: 'Dirk Van Der Merwe',
-          content: 'Welcome everyone to our 20-Year Brackenfell High Reunion! Huge thanks to the organizing committee for all the effort.',
-          category: 'thank_you'
-        },
-        {
-          id: 'm2',
-          created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-          author_name: 'Anri Smith',
-          content: 'Remember Mr. De Klerk’s math classes and hall assemblies? So wonderful to see everyone again tonight!',
-          category: 'memory'
-        },
-        {
-          id: 'm3',
-          created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-          author_name: 'Francois Pienaar',
-          content: 'Prediction for our 30th reunion: Dirk still drives the exact same bakkie and Chantal arrives in her own helicopter.',
-          category: 'prediction_30th'
-        }
-      ];
-    }
+    if (!list) list = [];
     return category ? list.filter(m => m.category === category) : list;
   }
 
@@ -672,32 +708,10 @@ export class SupabaseService {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
-    return [
-      {
-        id: 'tn1',
-        student_name: 'Dirk Van Der Merwe',
-        yearbook_image_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=60',
-        current_image_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=60',
-        votes_most_changed: 4
-      },
-      {
-        id: 'tn2',
-        student_name: 'Anri Smith',
-        yearbook_image_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=60',
-        current_image_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=60',
-        votes_most_changed: 7
-      },
-      {
-        id: 'tn3',
-        student_name: 'Francois Pienaar',
-        yearbook_image_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop&q=60',
-        current_image_url: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=500&auto=format&fit=crop&q=60',
-        votes_most_changed: 12
-      }
-    ];
+    return [];
   }
 
   private incrementLocalThenNowVotes(profileId: string): void {
