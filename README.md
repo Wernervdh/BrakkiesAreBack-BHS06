@@ -3,7 +3,7 @@
 The live photo wall and guest book for the Brackenfell High School Matric class of 2006 20-year reunion.
 Guests scan a QR code, check in on their phone (no app, no password) and share the night together.
 
-**Live:** https://brakkies-are-back-bhs-06.vercel.app
+**Live:** https://brakkies-are-back-bhs-06.vercel.app · **Venue QR code & printable poster:** [`docs/qr/`](docs/qr/)
 
 ## How it works
 
@@ -24,7 +24,7 @@ Guests scan a QR code, check in on their phone (no app, no password) and share t
 - **Moderator only:** organiser accounts can view everything and remove what isn't appropriate, but **cannot post, upload, heart or vote** (enforced by the database). To join in as yourself, check in as a normal guest on another phone or browser.
 - **Moderate:** delete any photo, note or Then & Now entry (🗑️); remove a guest (this deletes **everything** they posted). Who's Here shows classmates only; organisers also see an "Organisers logged in" list where they can end an unknown organiser session.
 - **📖 The Story:** a chronological album of the whole night, hour by hour. It stays hidden until an organiser publishes it in ☰ → *Organiser tools*. Organisers can preview it first.
-- **Super admin:** a second, separate **super admin code** (same login button). The super admin can do everything organisers can, **plus the Facebook pack**. Regular organisers can't open it and can't remove the super admin's session.
+- **Super admin:** a second, separate **super admin code** (same login button). The super admin can do everything organisers can, **plus the Facebook pack**. Regular organisers can't open it, don't see the super admin in Who's Here and can't remove its session.
 - **📘 Facebook pack (super admin only):** ☰ → *Organiser tools* → *Open Facebook pack*. Tick the photos that should go to Facebook (the shortlist is shared by all organisers), then *Download ZIP*. It contains the photos plus `captions.csv` with each caption and who to tag. Email, WhatsApp or Google Drive the ZIP to whoever posts in the class Facebook group. (Facebook doesn't let apps post into groups or tag people automatically.)
 - **Exports:** guest list, notes and photo list (with links) as CSV for Excel or Google Sheets.
 

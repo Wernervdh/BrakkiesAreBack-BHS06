@@ -101,7 +101,12 @@ export class GuestsComponent {
       .sort((a, b) => a.display_name.localeCompare(b.display_name));
   });
 
-  readonly organisers = computed(() => this.reunion.profiles().filter((p) => p.is_organizer));
+  /** Organiser sessions. The super admin is never listed, except to themself. */
+  readonly organisers = computed(() =>
+    this.reunion
+      .profiles()
+      .filter((p) => p.is_organizer && (!p.is_super_admin || p.id === this.session.userId()))
+  );
 
   async remove(guest: Profile): Promise<void> {
     const ok = await this.ui.confirm(
