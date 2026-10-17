@@ -14,7 +14,7 @@ Reunion web app for Brackenfell High School, Matric 2006, 20-year reunion. Guest
 1. `20261017000000_secure_rebuild.sql`: re-runnable; **drops and recreates all app tables** (wipes data).
 2. `20261017120000_organiser_accounts.sql`: keeps data, re-runnable. Separate moderator-only organiser accounts (see "Organisers").
 3. `20261017180000_log_out_and_back_in.sql`: keeps data, re-runnable. Profiles decoupled from logins (log out / log back in).
-Later migrations replace functions/policies from earlier ones, so **after re-running an earlier file, re-run all later ones**. Tested with PGlite (97 + 48 + 63 scenarios, see "Testing"). (1) applied live 2026-10-17; (2) and (3) applied live: see git log / ask the owner.
+Later migrations replace functions/policies from earlier ones, so **after re-running an earlier file, re-run all later ones**. Tested with PGlite (97 + 48 + 63 scenarios, see "Testing"). All three applied to the live project on 2026-10-17.
 
 Schema (after all three):
 - `profiles` (id uuid, unique lower(display_name), `is_organizer`). No FK to auth.users: a profile outlives the login that created it (new profiles reuse the creating login's id). Created **only** via RPCs `check_in` / `organizer_login`; no insert/update grants.
@@ -57,6 +57,7 @@ Optional: enable CAPTCHA (Turnstile) for anonymous sign-ins against scripted spa
 - UI: headless Chromium smoke tests via the browser-automation skill against `ng serve`.
 - DB harnesses (scratchpad): `test.mjs <1>` (97 checks), `test2.mjs <1> <2>` (48: organiser login, moderator-only, guest regressions, data kept), `test3.mjs <1> <2> <3>` (63: existing sessions kept, log out keeps data, log back in by name+email, wrong-email lockout, newest login wins, organiser log out/in, remove/leave).
 - E2E (2026-10-17, against the live Supabase project after the migration): two guests in separate browser contexts — check-in, duplicate name/email rejected, Who's Here no duplicates, photo + tag live, heart toggle, untag, note + tag, Then & Now + vote (no self-vote), Story hidden for guests, organiser code (wrong/right), Story preview, shortlist + ZIP, guest blocked from Facebook pack, organiser removes guest (all content gone, guest sent to welcome), leave & delete. 21/21 passed, 0 console errors. Test guests clean up after themselves (orphan anonymous auth users remain; harmless).
+- E2E #2 (2026-10-17, live site + live DB after migrations 2 + 3): guests post/heart/tag/note, log out keeps data, wrong email rejected, log back in (case-insensitive), newest login wins, 31-min idle → logged out with data kept, organiser login (wrong/right code), organiser can't post/heart/write/vote, organiser deletes a note (gone live), organiser log out + back in, organiser not taggable, organiser removes a guest, leave & delete, test organiser cleaned up. 22/22 passed, 0 console errors. (Chromium logs the successful 204 `/auth/v1/logout` as ERR_ABORTED afterwards; harmless.)
 - `npx ng build` must be warning-free.
 
 ## Known limitations / ideas
