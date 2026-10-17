@@ -13,7 +13,8 @@ import {
   Message,
   MessageCategory,
   ThenNowProfile,
-  UploadPhotoPayload
+  UploadPhotoPayload,
+  VoteRecord
 } from '../models/reunion.model';
 
 @Injectable({
@@ -34,6 +35,11 @@ export class SupabaseService {
   private wsMessagesSubject = new Subject<RealtimePostgresChangesPayload<Message>>();
   private wsThenNowSubject = new Subject<RealtimePostgresChangesPayload<ThenNowProfile>>();
   private wsProfilesSubject = new Subject<RealtimePostgresChangesPayload<Profile>>();
+
+  // Local Storage keys
+  private readonly VOTES_KEY = 'brakke_user_votes';
+  private readonly DELETED_IDS_KEY = 'brakke_deleted_ids';
+  private deletedIdsSet = new Set<string>();
 
   // Environment credentials with fallback
   private readonly supabaseUrl: string =
@@ -57,7 +63,124 @@ export class SupabaseService {
       }
     });
 
+    this.loadLocalDeletedIds();
+    this.syncDeletedIdsFromStorage();
     this.initLocalWebSocket();
+  }
+
+  private loadLocalDeletedIds(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(this.DELETED_IDS_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          arr.forEach((id: string) => this.deletedIdsSet.add(id));
+        }
+      }
+    } catch {}
+  }
+
+  private saveLocalDeletedIds(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(
+        this.DELETED_IDS_KEY,
+        JSON.stringify(Array.from(this.deletedIdsSet))
+      );
+    } catch {}
+  }
+
+  async syncDeletedIdsFromStorage(): Promise<void> {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from(this.STORAGE_BUCKET)
+        .list('deleted', { limit: 1000 });
+      if (!error && data && Array.isArray(data)) {
+        data.forEach((file) => {
+          if (file.name) {
+            // Strip any extension if present
+            const cleanId = file.name.replace(/\.json$/, '');
+            this.deletedIdsSet.add(cleanId);
+          }
+        });
+        this.saveLocalDeletedIds();
+      }
+    } catch {}
+  }
+
+  isItemDeleted(id: string): boolean {
+    return this.deletedIdsSet.has(id);
+  }
+
+  private async markIdAsDeleted(id: string): Promise<void> {
+    this.deletedIdsSet.add(id);
+    this.saveLocalDeletedIds();
+
+    // Broadcast through local websocket if connected
+    if (this.localWs && this.localWs.readyState === WebSocket.OPEN) {
+      try {
+        this.localWs.send(JSON.stringify({ eventType: 'DELETE_ID', id }));
+      } catch {}
+    }
+
+    // Persist to Supabase Storage in 'deleted/' folder so all attendees across devices sync it
+    try {
+      const fileBlob = new Blob(['1'], { type: 'text/plain' });
+      await this.supabase.storage
+        .from(this.STORAGE_BUCKET)
+        .upload(`deleted/${id}`, fileBlob, { upsert: true });
+    } catch {}
+  }
+
+  // ==========================================
+  // SINGLE VOTE TRACKING HELPERS (NO SPAM)
+  // ==========================================
+
+  private getVoteRecords(): VoteRecord {
+    if (typeof window === 'undefined') {
+      return { photos: [], messages: [], thenNow: [] };
+    }
+    try {
+      const raw = localStorage.getItem(this.VOTES_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          photos: Array.isArray(parsed.photos) ? parsed.photos : [],
+          messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+          thenNow: Array.isArray(parsed.thenNow) ? parsed.thenNow : []
+        };
+      }
+    } catch {}
+    return { photos: [], messages: [], thenNow: [] };
+  }
+
+  hasVotedPhoto(photoId: string): boolean {
+    return this.getVoteRecords().photos.includes(photoId);
+  }
+
+  recordPhotoVote(photoId: string): void {
+    const rec = this.getVoteRecords();
+    if (!rec.photos.includes(photoId)) {
+      rec.photos.push(photoId);
+      try {
+        localStorage.setItem(this.VOTES_KEY, JSON.stringify(rec));
+      } catch {}
+    }
+  }
+
+  hasVotedThenNow(profileId: string): boolean {
+    return this.getVoteRecords().thenNow.includes(profileId);
+  }
+
+  recordThenNowVote(profileId: string): void {
+    const rec = this.getVoteRecords();
+    if (!rec.thenNow.includes(profileId)) {
+      rec.thenNow.push(profileId);
+      try {
+        localStorage.setItem(this.VOTES_KEY, JSON.stringify(rec));
+      } catch {}
+    }
   }
 
   private detectLocalBackendUrl(): string {
@@ -178,6 +301,17 @@ export class SupabaseService {
 
     // 2. Fallback to Supabase
     try {
+      // Check if profile exists already (case-insensitive)
+      const { data: existing } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .ilike('display_name', displayName.trim())
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        return existing[0] as Profile;
+      }
+
       const { data, error } = await this.supabase
         .from('profiles')
         .insert({
@@ -188,28 +322,43 @@ export class SupabaseService {
         .select()
         .single();
 
-      if (error) throw error;
-      return data as Profile;
-    } catch {
-      return {
-        id: 'guest-' + Date.now(),
-        display_name: displayName.trim(),
-        email: email?.trim() || null,
-        is_organizer: isSpecialAdmin
-      };
-    }
+      if (error) {
+        // If conflict or error, fetch existing
+        const { data: fallbackExisting } = await this.supabase
+          .from('profiles')
+          .select('*')
+          .ilike('display_name', displayName.trim())
+          .limit(1);
+        if (fallbackExisting && fallbackExisting.length > 0) {
+          return fallbackExisting[0] as Profile;
+        }
+      } else if (data) {
+        return data as Profile;
+      }
+    } catch {}
+
+    return {
+      id: 'guest-' + Date.now(),
+      display_name: displayName.trim(),
+      email: email?.trim() || null,
+      is_organizer: isSpecialAdmin
+    };
   }
 
   /**
    * Fetches all registered reunion guests / who's here
    */
   async getProfiles(): Promise<Profile[]> {
+    await this.syncDeletedIdsFromStorage();
+
     // 1. Local backend
     try {
       const res = await fetch(`${this.localBackendBase}/api/profiles`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) return data as Profile[];
+        if (Array.isArray(data)) {
+          return (data as Profile[]).filter(p => !this.isItemDeleted(p.id));
+        }
       }
     } catch {}
 
@@ -220,7 +369,9 @@ export class SupabaseService {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data) return data as Profile[];
+      if (!error && data) {
+        return (data as Profile[]).filter(p => !this.isItemDeleted(p.id));
+      }
     } catch {}
 
     return [];
@@ -256,6 +407,7 @@ export class SupabaseService {
    */
   async getPhotos(options: { onlyApproved?: boolean; limit?: number } = {}): Promise<Photo[]> {
     const { onlyApproved = true, limit = 50 } = options;
+    await this.syncDeletedIdsFromStorage();
 
     // 1. Try Supabase cloud first
     try {
@@ -271,7 +423,7 @@ export class SupabaseService {
 
       const { data, error } = await query;
       if (!error && data) {
-        return data as Photo[];
+        return (data as Photo[]).filter(p => !this.isItemDeleted(p.id));
       }
     } catch {}
 
@@ -281,12 +433,12 @@ export class SupabaseService {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          return data as Photo[];
+          return (data as Photo[]).filter(p => !this.isItemDeleted(p.id));
         }
       }
     } catch {}
 
-    return this.getLocalPhotos();
+    return this.getLocalPhotos().filter(p => !this.isItemDeleted(p.id));
   }
 
   async uploadPhoto(payload: UploadPhotoPayload): Promise<Photo> {
@@ -424,6 +576,8 @@ export class SupabaseService {
    * Delete a photo (Admin / Organizer feature)
    */
   async deletePhoto(photoId: string): Promise<void> {
+    await this.markIdAsDeleted(photoId);
+
     // 1. Try local shared backend
     try {
       await fetch(`${this.localBackendBase}/api/photos/${photoId}`, {
@@ -447,6 +601,8 @@ export class SupabaseService {
    * Delete a message (Admin / Organizer feature)
    */
   async deleteMessage(messageId: string): Promise<void> {
+    await this.markIdAsDeleted(messageId);
+
     // 1. Try local shared backend
     try {
       await fetch(`${this.localBackendBase}/api/messages/${messageId}`, {
@@ -470,6 +626,8 @@ export class SupabaseService {
    * Delete a registered profile (Admin / Organizer feature)
    */
   async deleteProfile(profileId: string): Promise<void> {
+    await this.markIdAsDeleted(profileId);
+
     // 1. Try local shared backend
     try {
       await fetch(`${this.localBackendBase}/api/profiles/${profileId}`, {
@@ -487,6 +645,8 @@ export class SupabaseService {
    * Delete a Then & Now profile (Admin / Organizer feature)
    */
   async deleteThenNowProfile(profileId: string): Promise<void> {
+    await this.markIdAsDeleted(profileId);
+
     // 1. Try local shared backend
     try {
       await fetch(`${this.localBackendBase}/api/then-now/${profileId}`, {
@@ -526,6 +686,8 @@ export class SupabaseService {
   // ==========================================
 
   async getMessages(category?: MessageCategory): Promise<Message[]> {
+    await this.syncDeletedIdsFromStorage();
+
     // 1. Try local shared backend
     try {
       const url = category
@@ -534,7 +696,9 @@ export class SupabaseService {
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) return data as Message[];
+        if (Array.isArray(data)) {
+          return (data as Message[]).filter(m => !this.isItemDeleted(m.id));
+        }
       }
     } catch {}
 
@@ -548,10 +712,12 @@ export class SupabaseService {
       if (category) query = query.eq('category', category);
 
       const { data, error } = await query;
-      if (!error && data) return data as Message[];
+      if (!error && data) {
+        return (data as Message[]).filter(m => !this.isItemDeleted(m.id));
+      }
     } catch {}
 
-    return this.getLocalMessages(category);
+    return this.getLocalMessages(category).filter(m => !this.isItemDeleted(m.id));
   }
 
   async postMessage(message: {
@@ -610,11 +776,15 @@ export class SupabaseService {
   // ==========================================
 
   async getThenNowProfiles(): Promise<ThenNowProfile[]> {
+    await this.syncDeletedIdsFromStorage();
+
     try {
       const res = await fetch(`${this.localBackendBase}/api/then-now`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) return data as ThenNowProfile[];
+        if (Array.isArray(data)) {
+          return (data as ThenNowProfile[]).filter(tn => !this.isItemDeleted(tn.id));
+        }
       }
     } catch {}
 
@@ -624,10 +794,12 @@ export class SupabaseService {
         .select('*')
         .order('votes_most_changed', { ascending: false });
 
-      if (!error && data) return data as ThenNowProfile[];
+      if (!error && data) {
+        return (data as ThenNowProfile[]).filter(tn => !this.isItemDeleted(tn.id));
+      }
     } catch {}
 
-    return this.getLocalThenNowProfiles();
+    return this.getLocalThenNowProfiles().filter(tn => !this.isItemDeleted(tn.id));
   }
 
   async voteThenNowProfile(profileId: string): Promise<void> {

@@ -12,10 +12,12 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-  display_name TEXT NOT NULL,
+  display_name TEXT NOT NULL UNIQUE,
   email TEXT,
   is_organizer BOOLEAN NOT NULL DEFAULT false
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_display_name_lower ON public.profiles (LOWER(TRIM(display_name)));
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 

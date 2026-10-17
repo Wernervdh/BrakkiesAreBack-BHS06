@@ -39,13 +39,13 @@ import { SupabaseService } from '../../services/supabase.service';
         <div class="bg-[#112240]/80 backdrop-blur-xl border border-brakke-gold/20 rounded-3xl p-6 shadow-2xl shadow-black/60">
           <h2 class="text-xl font-bold text-white mb-1">Welcome to the Reunion!</h2>
           <p class="text-slate-300 text-xs mb-6">
-            Enter your name to share photos, vote in Face Matcher, and leave messages on the wall.
+            Enter your name & surname to share photos, vote in Face Matcher, and leave messages on the wall.
           </p>
 
           <form (ngSubmit)="enterReunion()" class="space-y-4">
             <div>
               <label for="displayName" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                First & Last Name (or Nickname) *
+                Name & Surname *
               </label>
               <input
                 id="displayName"
@@ -57,11 +57,13 @@ import { SupabaseService } from '../../services/supabase.service';
                 class="w-full px-4 py-3.5 bg-[#0a192f] border border-slate-700/80 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brakke-gold focus:border-transparent transition text-base"
                 autocomplete="name"
               />
+              <p class="text-[11px] text-slate-400 mt-1">Please provide both your first name and surname.</p>
             </div>
 
             @if (errorMessage()) {
-              <div class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs">
-                {{ errorMessage() }}
+              <div class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{{ errorMessage() }}</span>
               </div>
             }
 
@@ -81,6 +83,55 @@ import { SupabaseService } from '../../services/supabase.service';
         </div>
       </div>
 
+      <!-- Similarity / Confirmation Modal -->
+      @if (showConfirmModal()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div class="w-full max-w-sm bg-[#112240] border border-brakke-gold/40 rounded-3xl p-6 shadow-2xl text-center space-y-4">
+            <div class="w-12 h-12 rounded-2xl bg-brakke-gold/20 text-brakke-gold flex items-center justify-center text-2xl mx-auto">
+              🤔
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white mb-1">
+                Are you sure this is what you signed in with earlier?
+              </h3>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                We found an existing classmate with a very similar name:
+              </p>
+              <div class="mt-2 p-2.5 rounded-xl bg-[#0a192f] border border-slate-700/80 font-bold text-brakke-gold text-sm">
+                "{{ similarProfileName() }}"
+              </div>
+              <p class="text-[11px] text-slate-400 mt-2">
+                Did you mean to sign in as <strong>"{{ similarProfileName() }}"</strong>, or is <strong>"{{ pendingName() }}"</strong> a different classmate?
+              </p>
+            </div>
+
+            <div class="space-y-2 pt-2">
+              <button
+                type="button"
+                (click)="confirmUseExistingName()"
+                class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-brakke-gold text-slate-950 hover:brightness-105 transition"
+              >
+                Yes, sign in as "{{ similarProfileName() }}"
+              </button>
+              <button
+                type="button"
+                (click)="confirmProceedWithNewName()"
+                class="w-full py-2.5 px-4 rounded-xl font-semibold text-xs bg-slate-800 text-slate-300 hover:text-white transition"
+              >
+                No, keep "{{ pendingName() }}" (New)
+              </button>
+              <button
+                type="button"
+                (click)="cancelModal()"
+                class="w-full py-2 text-[11px] text-slate-400 hover:text-slate-200 transition"
+              >
+                Cancel & Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Footer Info -->
       <div class="w-full max-w-md pb-6 text-center text-xs text-slate-400 z-10">
         <p>Zero-friction QR access • Matric 2006 (2006–2026)</p>
@@ -96,6 +147,11 @@ export class WelcomeComponent {
   loading = signal(false);
   errorMessage = signal('');
 
+  // Confirmation modal state for fuzzy match
+  showConfirmModal = signal(false);
+  pendingName = signal('');
+  similarProfileName = signal('');
+
   constructor() {
     const existing = this.supabaseService.getStoredUserName();
     if (existing) {
@@ -104,24 +160,152 @@ export class WelcomeComponent {
   }
 
   async enterReunion(): Promise<void> {
-    if (!this.displayName.trim()) {
-      this.errorMessage.set('Please enter your name.');
+    const trimmed = this.displayName.trim();
+    if (!trimmed) {
+      this.errorMessage.set('Please enter your name & surname.');
       return;
+    }
+
+    // Check special admin exemption
+    const isSpecialAdmin = trimmed.toLowerCase() === '06brakkieadmin';
+
+    // Validate name and surname requirement (at least 2 words of at least 2 chars each)
+    if (!isSpecialAdmin) {
+      const parts = trimmed.split(/\s+/).filter((p) => p.length > 0);
+      if (parts.length < 2 || parts[0].length < 2 || parts[1].length < 2) {
+        this.errorMessage.set(
+          'Please enter both your first name and surname (e.g. Dirk van der Merwe).'
+        );
+        return;
+      }
     }
 
     this.loading.set(true);
     this.errorMessage.set('');
 
     try {
-      this.supabaseService.setStoredUserName(this.displayName.trim());
-      await this.supabaseService.registerProfile(this.displayName.trim());
-      this.router.navigate(['/feed']);
+      // Fetch existing profiles to check uniqueness & fuzzy similarity
+      const profiles = await this.supabaseService.getProfiles();
+
+      if (!isSpecialAdmin) {
+        // 1. Exact match (case-insensitive) -> returning user signing back in with identical name
+        const exactMatch = profiles.find(
+          (p) => p.display_name.trim().toLowerCase() === trimmed.toLowerCase()
+        );
+
+        if (!exactMatch) {
+          // 2. Fuzzy match detection: check if there is an existing profile that is very close
+          const similar = this.findSimilarProfile(trimmed, profiles);
+          if (similar) {
+            this.pendingName.set(trimmed);
+            this.similarProfileName.set(similar.display_name);
+            this.showConfirmModal.set(true);
+            this.loading.set(false);
+            return;
+          }
+        }
+      }
+
+      await this.finalizeLogin(trimmed);
     } catch (err) {
       console.error(err);
-      // Still allow zero friction redirect even if Supabase is offline
-      this.router.navigate(['/feed']);
+      await this.finalizeLogin(trimmed);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async confirmUseExistingName(): Promise<void> {
+    const nameToUse = this.similarProfileName();
+    this.showConfirmModal.set(false);
+    this.loading.set(true);
+    await this.finalizeLogin(nameToUse);
+    this.loading.set(false);
+  }
+
+  async confirmProceedWithNewName(): Promise<void> {
+    const nameToUse = this.pendingName();
+    this.showConfirmModal.set(false);
+    this.loading.set(true);
+    await this.finalizeLogin(nameToUse);
+    this.loading.set(false);
+  }
+
+  cancelModal(): void {
+    this.showConfirmModal.set(false);
+    this.loading.set(false);
+  }
+
+  private async finalizeLogin(finalName: string): Promise<void> {
+    this.supabaseService.setStoredUserName(finalName.trim());
+    try {
+      await this.supabaseService.registerProfile(finalName.trim());
+    } catch (err) {
+      console.error('Registration warning:', err);
+    }
+    this.router.navigate(['/feed']);
+  }
+
+  /**
+   * Levenshtein Distance & Token Jaccard check to detect slightly different spellings
+   */
+  private findSimilarProfile(input: string, profiles: any[]): any | null {
+    const cleanInput = this.normalizeName(input);
+    const inputTokens = cleanInput.split(' ').filter(Boolean);
+
+    for (const p of profiles) {
+      if (!p.display_name) continue;
+      if (p.display_name.toLowerCase() === '06brakkieadmin') continue;
+
+      const cleanTarget = this.normalizeName(p.display_name);
+      if (cleanTarget === cleanInput) continue; // exact matches handled separately
+
+      // Check edit distance
+      const distance = this.levenshteinDistance(cleanInput, cleanTarget);
+      const maxLen = Math.max(cleanInput.length, cleanTarget.length);
+      const similarity = 1 - distance / maxLen;
+
+      // Check word token overlap (e.g. "Dirk van der Merwe" vs "Dirk v.d. Merwe" or "Dirk v d Merwe")
+      const targetTokens = cleanTarget.split(' ').filter(Boolean);
+      const common = inputTokens.filter((t) => targetTokens.includes(t));
+      const tokenOverlap = common.length / Math.max(inputTokens.length, targetTokens.length);
+
+      if (similarity >= 0.78 || (tokenOverlap >= 0.66 && distance <= 4)) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  private normalizeName(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private levenshteinDistance(a: string, b: string): number {
+    const matrix: number[][] = [];
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
   }
 }

@@ -51,3 +51,9 @@ export const PHOTO_PROMPTS = [
 ] as const;
 
 export type PhotoPrompt = typeof PHOTO_PROMPTS[number];
+
+export interface VoteRecord {
+  photos: string[];
+  messages: string[];
+  thenNow: string[];
+}

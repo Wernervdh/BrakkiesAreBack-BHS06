@@ -55,6 +55,9 @@ function broadcast(eventType, table, payload) {
   });
 }
 
+// In-memory set for deleted IDs across all entities
+let deletedIds = new Set();
+
 // REST Endpoints
 app.get('/api/photos', (req, res) => {
   res.json(photos);
@@ -189,8 +192,20 @@ app.post('/api/profiles', (req, res) => {
 
   // Check if profile already exists by name
   const isSpecialAdmin = display_name.trim().toLowerCase() === '06brakkieadmin';
+  const cleanName = display_name.trim();
+
+  // Validate name & surname unless special admin
+  if (!isSpecialAdmin) {
+    const parts = cleanName.split(/\s+/).filter(Boolean);
+    if (parts.length < 2 || parts[0].length < 2 || parts[1].length < 2) {
+      return res.status(400).json({
+        error: 'Please enter both your first name and surname.'
+      });
+    }
+  }
+
   const existingIndex = profiles.findIndex(
-    p => p.display_name.toLowerCase() === display_name.trim().toLowerCase()
+    p => p.display_name.toLowerCase() === cleanName.toLowerCase()
   );
 
   let profile;
@@ -202,7 +217,7 @@ app.post('/api/profiles', (req, res) => {
   } else {
     profile = {
       id: 'u_' + Date.now(),
-      display_name: display_name.trim(),
+      display_name: cleanName,
       email: email ? email.trim() : null,
       is_organizer: isSpecialAdmin,
       created_at: new Date().toISOString()

@@ -125,7 +125,12 @@ type ActiveTab = 'feed' | 'messages' | 'then_now' | 'guests';
                         }
                         <button
                           (click)="likePhoto(photo)"
-                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1b2d4f] hover:bg-rose-500/20 hover:text-rose-400 text-slate-200 border border-slate-700 hover:border-rose-500/40 transition active:scale-95"
+                          [disabled]="hasVotedPhoto(photo.id)"
+                          [class]="hasVotedPhoto(photo.id)
+                            ? 'bg-rose-500/30 text-rose-300 border-rose-500/50 cursor-default'
+                            : 'bg-[#1b2d4f] hover:bg-rose-500/20 hover:text-rose-400 text-slate-200 border-slate-700 hover:border-rose-500/40 active:scale-95'"
+                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition"
+                          [title]="hasVotedPhoto(photo.id) ? 'You already loved this photo' : 'Like photo'"
                         >
                           <span class="text-base text-rose-500">❤️</span>
                           <span class="text-xs font-bold font-mono">{{ photo.likes_count }}</span>
@@ -306,9 +311,17 @@ type ActiveTab = 'feed' | 'messages' | 'then_now' | 'guests';
                     <div class="flex items-center gap-2">
                       <button
                         (click)="voteThenNow(entry)"
-                        class="flex-1 py-3 px-4 rounded-xl font-bold text-xs bg-[#1b2d4f] hover:bg-brakke-gold hover:text-slate-950 text-slate-200 border border-slate-700 hover:border-brakke-gold transition flex items-center justify-center gap-2 active:scale-[0.99]"
+                        [disabled]="hasVotedThenNow(entry.id)"
+                        [class]="hasVotedThenNow(entry.id)
+                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 cursor-default'
+                          : 'bg-[#1b2d4f] hover:bg-brakke-gold hover:text-slate-950 text-slate-200 border-slate-700 hover:border-brakke-gold active:scale-[0.99]'"
+                        class="flex-1 py-3 px-4 rounded-xl font-bold text-xs border transition flex items-center justify-center gap-2"
                       >
-                        <span>⚡ Vote Most Changed</span>
+                        @if (hasVotedThenNow(entry.id)) {
+                          <span>✓ Voted Most Changed</span>
+                        } @else {
+                          <span>⚡ Vote Most Changed</span>
+                        }
                       </button>
                       @if (isAdmin()) {
                         <button
@@ -637,8 +650,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
   }
 
+  // Vote check helpers
+  hasVotedPhoto(photoId: string): boolean {
+    return this.supabaseService.hasVotedPhoto(photoId);
+  }
+
+  hasVotedThenNow(profileId: string): boolean {
+    return this.supabaseService.hasVotedThenNow(profileId);
+  }
+
   // User Actions
   async likePhoto(photo: Photo): Promise<void> {
+    if (this.hasVotedPhoto(photo.id)) return;
+    this.supabaseService.recordPhotoVote(photo.id);
+
     // Optimistic UI update
     this.photos.update((list) =>
       list.map((p) =>
@@ -653,6 +678,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async voteThenNow(entry: ThenNowProfile): Promise<void> {
+    if (this.hasVotedThenNow(entry.id)) return;
+    this.supabaseService.recordThenNowVote(entry.id);
+
     this.thenNowProfiles.update((list) =>
       list
         .map((p) =>
