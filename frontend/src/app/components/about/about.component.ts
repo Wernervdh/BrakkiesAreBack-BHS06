@@ -50,11 +50,13 @@ import { CrestComponent } from '../shared/crest.component';
             <li class="flex gap-3"><span class="step">5</span><span>Changed your mind? You can delete your own photos, notes and Then &amp; Now entry at any time.</span></li>
           </ol>
           <p class="text-sm text-slate-400">
-            Tip: use the same phone and browser all night. Your check-in is saved in this browser. If you clear it
-            or switch phones, you can check in again with a slightly different name, or ask an organiser to release your name.
+            <strong class="text-slate-200">Log out</strong> (menu ☰) keeps everything you posted. After
+            <strong class="text-slate-200">30 minutes without activity</strong> you're logged out automatically, and nothing is
+            deleted. To log back in (also on another phone), check in with <strong class="text-slate-200">exactly the same
+            name and email</strong>. You can be logged in on one phone at a time.
           </p>
           <p class="text-sm text-slate-400">
-            <strong class="text-slate-200">Leave &amp; delete my data</strong> (in the menu ☰) removes you from Who's Here
+            <strong class="text-slate-200">Leave &amp; delete my data</strong> (menu ☰) removes you from Who's Here
             and permanently deletes everything you posted.
           </p>
         </section>

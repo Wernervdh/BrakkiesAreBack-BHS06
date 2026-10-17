@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { SessionService } from '../../services/session.service';
@@ -28,9 +28,9 @@ import { isValidEmail, isValidFullName, normalizeDisplayName } from '../../utils
       </header>
 
       <main class="relative w-full max-w-md my-auto py-8">
-        @if (session.removedNotice()) {
-          <div class="mb-4 p-3 rounded-xl text-sm bg-brakke-gold/10 border border-brakke-gold/30 text-brakke-goldLight">
-            You were signed out by an organiser. You can check in again below.
+        @if (noticeText(); as text) {
+          <div role="status" class="mb-4 p-3 rounded-xl text-sm bg-brakke-gold/10 border border-brakke-gold/30 text-brakke-goldLight">
+            {{ text }}
           </div>
         }
 
@@ -38,6 +38,7 @@ import { isValidEmail, isValidFullName, normalizeDisplayName } from '../../utils
           <h2 class="text-xl font-bold text-white">Welcome back, Brakkie!</h2>
           <p class="text-slate-300 text-sm mt-1 mb-6">
             Check in to share photos, write in the time capsule and vote in Then &amp; Now.
+            <span class="block mt-1 text-slate-400">Been here before? Use exactly the same name and email to log back in.</span>
           </p>
 
           <form (ngSubmit)="submit()" class="space-y-4" novalidate>
@@ -137,6 +138,21 @@ export class WelcomeComponent {
   readonly loading = signal(false);
   readonly errorMessage = signal('');
   readonly orgLoginOpen = signal(false);
+
+  readonly noticeText = computed(() => {
+    switch (this.session.notice()) {
+      case 'logged_out':
+        return 'You are logged out. Your photos and notes are still here: check in with the same name and email to continue.';
+      case 'inactive':
+        return 'You were logged out after 30 minutes without activity. Nothing was deleted: check in with the same name and email to continue.';
+      case 'signed_out':
+        return 'You were logged out, maybe because you logged in on another phone. Check in with the same name and email to continue.';
+      case 'removed':
+        return 'An organiser removed your check-in. You can check in again below.';
+      default:
+        return '';
+    }
+  });
 
   async submit(): Promise<void> {
     const name = normalizeDisplayName(this.displayName);

@@ -15,10 +15,12 @@ Guests scan a QR code, check in on their phone (no app, no password) and share t
 4. **💬 Time Capsule**: write a thank-you, a memory or a prediction for the 30th, and tag classmates.
 5. **🎭 Then & Now**: post your 2006 matric photo next to a selfie from tonight. Everyone can vote once per entry for "Most Changed" (not for yourself).
 6. **👥 Who's Here**: see who has checked in.
-7. You can delete your own posts any time, remove your tag from someone else's post, or use **☰ → Leave & delete my data**.
+7. You can delete your own posts any time and remove your tag from someone else's post.
+8. **☰ → Log out** keeps everything you posted. After **30 minutes without activity** you're logged out automatically (nothing is deleted). To log back in, on any phone, check in with **exactly the same name and email**. One phone at a time: logging in elsewhere logs out the other phone.
+9. **☰ → Leave & delete my data** removes you and everything you posted, permanently.
 
 ### For organisers
-- **Log in:** on the welcome page tap **Organiser login**, enter a name (e.g. "Werner – Organiser") and the organiser code. No email needed. **☰ → Log out** when done.
+- **Log in:** on the welcome page tap **Organiser login**, enter a name (e.g. "Werner – Organiser") and the organiser code. No email needed. **☰ → Log out** when done; log back in later with the same organiser name and the code.
 - **Moderator only:** organiser accounts can view everything and remove what isn't appropriate, but **cannot post, upload, heart or vote** (enforced by the database). To join in as yourself, check in as a normal guest on another phone or browser.
 - **Moderate:** delete any photo, note or Then & Now entry (🗑️); remove a guest (this deletes **everything** they posted) or another organiser.
 - **📖 The Story:** a chronological album of the whole night, hour by hour. It stays hidden until an organiser publishes it in ☰ → *Organiser tools*. Organisers can preview it first.
@@ -28,7 +30,7 @@ Guests scan a QR code, check in on their phone (no app, no password) and share t
 ## Setup (one time, Supabase dashboard)
 1. **Authentication → Sign In / Providers → Allow anonymous sign-ins: ON.**
 2. **Authentication → Rate limits:** raise *anonymous sign-ins per hour* (default 30 per IP; everyone on venue Wi-Fi shares one IP), e.g. to 300.
-3. **SQL editor:** run [`backend/supabase/migrations/20261017000000_secure_rebuild.sql`](backend/supabase/migrations/20261017000000_secure_rebuild.sql) (⚠️ wipes all app data), then [`20261017120000_organiser_accounts.sql`](backend/supabase/migrations/20261017120000_organiser_accounts.sql) (keeps data). Always run them in this order.
+3. **SQL editor:** run [`backend/supabase/migrations/20261017000000_secure_rebuild.sql`](backend/supabase/migrations/20261017000000_secure_rebuild.sql) (⚠️ wipes all app data), then [`20261017120000_organiser_accounts.sql`](backend/supabase/migrations/20261017120000_organiser_accounts.sql) and [`20261017180000_log_out_and_back_in.sql`](backend/supabase/migrations/20261017180000_log_out_and_back_in.sql) (both keep data). Always run them in this order.
 4. **SQL editor:** set the organiser code (keep it out of git, because this repo is public):
    ```sql
    select private.set_organizer_code('a-long-secret-code');

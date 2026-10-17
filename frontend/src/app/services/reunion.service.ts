@@ -83,6 +83,8 @@ export class ReunionService {
     this.loading.set(true);
     try {
       await Promise.all([
+        // Also notices a log-out elsewhere (newest login wins) or removal while away.
+        this.session.refreshProfile(),
         this.loadPhotos(),
         this.loadMessages(),
         this.loadThenNow(),

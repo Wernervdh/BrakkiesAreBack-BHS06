@@ -12,24 +12,26 @@ Reunion web app for Brackenfell High School, Matric 2006, 20-year reunion. Guest
 
 ## Database migrations (run in this order in the Supabase SQL editor)
 1. `20261017000000_secure_rebuild.sql`: re-runnable; **drops and recreates all app tables** (wipes data).
-2. `20261017120000_organiser_accounts.sql`: keeps data, re-runnable. Separate moderator-only organiser accounts (see "Organisers"). It replaces `private.stamp_new_content` and several policies, so **after re-running (1) always re-run (2)**.
-Both tested with PGlite (97 + 48 scenarios, see "Testing"). Applied to the live project on 2026-10-17.
+2. `20261017120000_organiser_accounts.sql`: keeps data, re-runnable. Separate moderator-only organiser accounts (see "Organisers").
+3. `20261017180000_log_out_and_back_in.sql`: keeps data, re-runnable. Profiles decoupled from logins (log out / log back in).
+Later migrations replace functions/policies from earlier ones, so **after re-running an earlier file, re-run all later ones**. Tested with PGlite (97 + 48 + 63 scenarios, see "Testing"). (1) applied live 2026-10-17; (2) and (3) applied live: see git log / ask the owner.
 
-Schema (after both):
-- `profiles` (id = `auth.uid()`, unique lower(display_name), `is_organizer`). Created **only** via RPC `check_in(name, email)`; no insert/update grants.
+Schema (after all three):
+- `profiles` (id uuid, unique lower(display_name), `is_organizer`). No FK to auth.users: a profile outlives the login that created it (new profiles reuse the creating login's id). Created **only** via RPCs `check_in` / `organizer_login`; no insert/update grants.
+- `private.profile_sessions` (auth_uid PK → profile_id UNIQUE): links the current anonymous login to a profile; **one login per profile, newest wins**. `public.current_profile_id()` resolves it and is used by every policy/trigger instead of `auth.uid()`. `public.my_profile()` returns the caller's profile; `public.end_session()` logs out (unlinks; nothing deleted).
 - `private.email_fingerprints`: HMAC-SHA256 of lower(email) with `private.settings.email_pepper`; unique → one check-in per email. The address itself is never stored; nobody (not organisers) can read fingerprints.
-- `photos` (owner_id, author_name, prompt_tag, caption ≤140, image_path `photos/<uid>/...`, likes_count, shortlisted), `photo_likes` (PK photo+user), `photo_tags`.
+- `photos` (owner_id, author_name, prompt_tag, caption ≤140, image_path `photos/<profile id>/...`, likes_count, shortlisted), `photo_likes` (PK photo+user), `photo_tags`.
 - `messages` (content 1–500, category thank_you|memory|prediction_30th), `message_tags`.
-- `then_now_entries` (one per guest; then_path/now_path under `then-now/<uid>/`), `then_now_votes` (no self-votes).
+- `then_now_entries` (one per guest; then_path/now_path under `then-now/<profile id>/`), `then_now_votes` (no self-votes).
 - `app_settings.story_published` (read: everyone; change: `set_story_published()` organisers only).
 - Trigger `private.stamp_new_content` stamps owner/author/created_at, zeroes counters, validates image paths, rate-limits (20 photos / 10 messages per 10 min). Trigger `private.sync_counter` maintains likes/votes counts.
-- RPCs: `check_in(name, email)` (guests), `organizer_login(name, code)` (organisers; returns null on wrong code; bcrypt hash in `private.settings`; 5 tries/15 min per user, 50 global), `set_photo_shortlisted(target, bool)`, `set_story_published(bool)`, `is_organizer()`. SQL-editor only: `private.set_organizer_code(code)`. (`claim_organizer` / `set_organizer` were removed by migration 2.)
+- RPCs: `check_in(name, email)` (new guest, or log back in when name + email fingerprint match; returns null on a name/email mismatch; 5 wrong tries per name per 15 min via `private.login_attempts`, 200 global), `organizer_login(name, code)` (new organiser or log back in by organiser name; returns null on wrong code; bcrypt hash in `private.settings`; 5 tries/15 min per login, 50 global), `my_profile()`, `end_session()`, `current_profile_id()`, `set_photo_shortlisted(target, bool)`, `set_story_published(bool)`, `is_organizer()`. SQL-editor only: `private.set_organizer_code(code)`. (`claim_organizer` / `set_organizer` were removed by migration 2.)
 - Deleting a profile **cascades to everything the guest posted** (photos, notes, Then & Now, likes, votes, tags, fingerprint). The client deletes the guest's storage folder first (`ReunionService.removeUserFiles`).
 - `anon` role has no access to anything. Storage: public read by URL, no listing; upload only into own folder, jpg/png/webp, 5 MB.
 
 ## Frontend structure (`frontend/src/app`)
 - Routes (`app.routes.ts`): `/welcome` (redirects to /feed if checked in; has the "Organiser login" link), `/feed` (checked-in guard), `/story` (published or organiser), `/organiser/facebook` (organiser), `/about` (public).
-- Services: `supabase.service.ts` (client + public URLs), `session.service.ts` (anonymous sign-in, profile, guest check-in, organiser login, leave/log out), `reunion.service.ts` (all data + one Realtime channel + optimistic likes/votes + tags + story flag + refetch after 30 s in background), `ui.service.ts` (toasts + confirm dialog, rendered by `shared/ui-overlay.component.ts`).
+- Services: `supabase.service.ts` (client + public URLs), `session.service.ts` (anonymous sign-in, profile via `my_profile`, guest check-in / log back in, organiser login, log out, leave, 30-min inactivity log-out (`INACTIVITY_LIMIT_MS`, last activity in localStorage `brakke_last_active`), `notice` shown on the welcome page; re-checks the profile every minute to notice "logged in elsewhere" / removal; `userId` = current **profile** id), `reunion.service.ts` (all data + one Realtime channel + optimistic likes/votes + tags + story flag + refetch after 30 s in background), `ui.service.ts` (toasts + confirm dialog, rendered by `shared/ui-overlay.component.ts`).
 - Components: `welcome`, `about` (also "How it works"), `dashboard` (header, ☰ menu, bottom tabs) with tabs `photo-feed`, `capsule`, `then-now`, `guests`; modals `photo-modal`, `then-now-modal`, `message-modal`, `organizer-login-modal` (welcome page), `organizer-tools-modal`; `story`; `organizer/facebook-pack`; shared `crest`, `tag-picker`, `tag-list`.
 - Utils: `image.ts` (resize to ≤1600px JPEG, strips EXIF/GPS; `randomId` works without secure context), `errors.ts` (`friendlyError`, `UserFacingError`), `format.ts` (names, CSV with formula-injection guard, downloads).
 - Theme from the crest: `brakke-*` colours in `tailwind.config.js`, component classes (`btn-primary`, `card`, `input`, `chip-on`...) in `styles.css`. Crest: `public/crest.svg`.
@@ -39,25 +41,26 @@ Schema (after both):
 - Likes/votes: one per guest, toggle to undo. Can't vote for your own Then & Now.
 - Tags: only checked-in guests; only the poster adds tags (max 20); tagged guest/poster/organiser can remove.
 - Owners delete their own posts.
-- **Organisers** are separate moderator accounts: welcome page → "Organiser login" (name + code, no email). They can view everything, delete any photo/note/Then & Now/guest/other organiser, publish the Story, shortlist + ZIP photos (Facebook pack: photos + captions.csv with who to tag) and export CSVs. They **cannot** post, upload, heart, vote or be tagged (DB-enforced; UI hides those controls; `ReunionService.requireGuest`). Guests can't become organisers. ☰ → "Log out" deletes the organiser profile and signs out (nothing to lose). Facebook's API can't post to groups or tag people, hence the ZIP.
-- Guests: ☰ → "Leave & delete my data" deletes the guest's profile (cascade) + files and signs out.
+- **Organisers** are separate moderator accounts: welcome page → "Organiser login" (name + code, no email). They can view everything, delete any photo/note/Then & Now/guest/other organiser, publish the Story, shortlist + ZIP photos (Facebook pack: photos + captions.csv with who to tag) and export CSVs. They **cannot** post, upload, heart, vote or be tagged (DB-enforced; UI hides those controls; `ReunionService.requireGuest`). Guests can't become organisers. ☰ → "Log out" keeps the organiser account; log back in with the same organiser name + code. Facebook's API can't post to groups or tag people, hence the ZIP.
+- Guests: ☰ → "Log out" keeps everything; automatic log-out after 30 min without activity (client-side timer; data kept). Log back in on any device with exactly the same name + email (email is unverified: anyone knowing both could log in as that guest; mitigated by the per-name lockout and newest-login-wins). ☰ → "Leave & delete my data" deletes the guest's profile (cascade) + files and signs out.
 - `ReunionService.guests` = profiles without organisers (Who's Here count, tag picker, Story stats).
 
 ## Supabase dashboard settings (required)
 1. Authentication → Sign In / Providers → **Allow anonymous sign-ins: ON**.
 2. Authentication → Rate limits → raise "anonymous sign-ins per hour" (default 30/IP; venue Wi-Fi shares one IP), e.g. 300.
-3. Run both migrations (in order) in the SQL editor, then `select private.set_organizer_code('<long secret>');` (never commit the code; repo is public).
+3. Run all migrations (in order) in the SQL editor, then `select private.set_organizer_code('<long secret>');` (never commit the code; repo is public).
 4. Storage → `reunion-media`: delete leftover files from the old version (`photos/`, `deleted/`, `metadata/`).
 Optional: enable CAPTCHA (Turnstile) for anonymous sign-ins against scripted spam.
 
 ## Testing
 - DB: PGlite harness (kept outside the repo in the session scratchpad) stubs `auth.uid()`, roles and the storage schema, runs the migration twice and checks the RLS/RPC scenarios. Docker isn't available on this machine (WSL feature off).
 - UI: headless Chromium smoke tests via the browser-automation skill against `ng serve`.
-- DB harnesses (scratchpad): `test.mjs <rebuild>` (97 checks) and `test2.mjs <rebuild> <organiser_accounts>` (48 checks: organiser login, moderator-only, guest regressions, data kept).
+- DB harnesses (scratchpad): `test.mjs <1>` (97 checks), `test2.mjs <1> <2>` (48: organiser login, moderator-only, guest regressions, data kept), `test3.mjs <1> <2> <3>` (63: existing sessions kept, log out keeps data, log back in by name+email, wrong-email lockout, newest login wins, organiser log out/in, remove/leave).
 - E2E (2026-10-17, against the live Supabase project after the migration): two guests in separate browser contexts — check-in, duplicate name/email rejected, Who's Here no duplicates, photo + tag live, heart toggle, untag, note + tag, Then & Now + vote (no self-vote), Story hidden for guests, organiser code (wrong/right), Story preview, shortlist + ZIP, guest blocked from Facebook pack, organiser removes guest (all content gone, guest sent to welcome), leave & delete. 21/21 passed, 0 console errors. Test guests clean up after themselves (orphan anonymous auth users remain; harmless).
 - `npx ng build` must be warning-free.
 
 ## Known limitations / ideas
-- Anonymous identity lives in the browser; switching phone/clearing storage = new identity (an organiser can release the old name/email by removing the guest, which also deletes their posts).
+- Log back in uses an unverified email (no email is sent). Email OTP verification would need an SMTP provider (e.g. Resend) configured in Supabase.
+- The 30-minute inactivity log-out is client-side (a convenience/privacy feature on shared phones, not a server-enforced session limit).
 - No offline/service worker yet; no image thumbnails (Supabase image transforms need a paid plan).
 - Photos are public to anyone who has the exact (unguessable) URL.

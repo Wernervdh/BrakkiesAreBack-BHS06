@@ -4,21 +4,52 @@ import { Profile } from '../models/reunion.model';
 import { UserFacingError } from '../utils/errors';
 import { normalizeDisplayName } from '../utils/format';
 
+/** Log out automatically after this long without any interaction. Posts are kept. */
+export const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
+const LAST_ACTIVE_KEY = 'brakke_last_active';
+const CHECK_EVERY_MS = 60 * 1000;
+
+/** Why the guest is back on the welcome page (shown there). */
+export type SessionNotice = 'logged_out' | 'inactive' | 'signed_out' | 'removed' | null;
+
 /**
- * Guest identity. Each device signs in anonymously with Supabase Auth; the guest's
- * profile row is keyed by that auth user id, so the database knows who owns what.
+ * Guest identity. Each browser signs in anonymously with Supabase Auth and the database links
+ * that login to a profile (private.profile_sessions). Logging out unlinks it; checking in again
+ * with the same name + email links a new login to the same profile, so nothing is lost.
+ * One active login per profile: logging in on another phone logs this one out.
  */
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   private readonly supabase = inject(SupabaseService).client;
 
-  readonly userId = signal<string | null>(null);
   readonly profile = signal<Profile | null>(null);
+  /** The current profile id: owner of photos, notes, hearts and votes. */
+  readonly userId = computed(() => this.profile()?.id ?? null);
   readonly isOrganizer = computed(() => this.profile()?.is_organizer === true);
-  /** Set when an organiser removed this guest, so the welcome page can explain why. */
-  readonly removedNotice = signal(false);
+  readonly notice = signal<SessionNotice>(null);
 
+  private authUid: string | null = null;
   private initPromise: Promise<void> | null = null;
+  private leaving = false;
+  private lastWrite = 0;
+
+  constructor() {
+    if (typeof window === 'undefined') return;
+    const touch = () => this.touch();
+    for (const event of ['pointerdown', 'keydown', 'touchstart', 'wheel']) {
+      window.addEventListener(event, touch, { passive: true });
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      // Back from the background: check the idle time before counting this as activity.
+      if (!this.expireIfIdle()) this.touch(true);
+    });
+    setInterval(() => {
+      if (!this.profile() || this.expireIfIdle()) return;
+      // Also notices "logged in on another phone" and removal by an organiser.
+      void this.refreshProfile().catch(() => undefined);
+    }, CHECK_EVERY_MS);
+  }
 
   init(): Promise<void> {
     this.initPromise ??= this.restore().catch((err) => {
@@ -30,116 +61,166 @@ export class SessionService {
 
   private async restore(): Promise<void> {
     const { data } = await this.supabase.auth.getSession();
-    this.userId.set(data.session?.user.id ?? null);
-    if (this.userId()) await this.refreshProfile();
+    this.authUid = data.session?.user.id ?? null;
+    if (!this.authUid) return;
+    if (this.isIdle()) {
+      await this.logout('inactive');
+      return;
+    }
+    this.touch(true);
+    await this.refreshProfile();
   }
 
   async refreshProfile(): Promise<Profile | null> {
-    const uid = this.userId();
-    if (!uid) {
+    if (!this.authUid) {
       this.profile.set(null);
       return null;
     }
-    const { data, error } = await this.supabase.from('profiles').select('*').eq('id', uid).maybeSingle();
+    const { data, error } = await this.supabase.rpc('my_profile').maybeSingle();
     if (error) throw error;
-    this.profile.set(data as Profile | null);
-    return data as Profile | null;
+    const profile = (data as Profile | null) ?? null;
+    if (!profile && this.profile() && !this.leaving) this.notice.set('signed_out');
+    this.profile.set(profile);
+    return profile;
   }
 
   /**
-   * Signs the device in (anonymously) and creates the guest profile.
-   * The database keeps only a keyed fingerprint of the email to allow one check-in per email;
-   * the address itself is never stored.
+   * Checks in a new guest, or logs a returning guest back in (same name + same email).
+   * The database keeps only a keyed fingerprint of the email; the address itself is never stored.
    */
   async checkIn(displayName: string, email: string): Promise<Profile> {
-    if (!this.userId()) {
-      const { data, error } = await this.supabase.auth.signInAnonymously();
-      if (error || !data.user) throw error ?? new Error('Sign-in failed');
-      this.userId.set(data.user.id);
-    }
-
+    await this.ensureLogin();
     const { data, error } = await this.supabase
       .rpc('check_in', { p_display_name: normalizeDisplayName(displayName), p_email: email.trim() })
       .single();
     if (error) {
       if (/already checked in/.test(error.message)) {
-        throw new UserFacingError(
-          'Someone with this name has already checked in. If that was you on another phone, ask an organiser to release your name, or add a middle name or nickname.'
-        );
-      }
-      if (/already used to check in/.test(error.message)) {
-        throw new UserFacingError(
-          'This email address was already used to check in on another phone. If that was you, ask an organiser to release it.'
-        );
+        throw new UserFacingError('Someone with this name has already checked in. Add a middle name or nickname.');
       }
       throw error;
     }
-
-    const profile = data as Profile;
-    this.profile.set(profile);
-    this.removedNotice.set(false);
-    return profile;
+    const profile = data as Profile | null;
+    if (!profile?.id) {
+      throw new UserFacingError(
+        "This name has already checked in with a different email. If it's you, use the same email as before. " +
+          "If you're someone else with the same name, add a middle name or nickname."
+      );
+    }
+    return this.loggedIn(profile);
   }
 
   /**
-   * Organiser (moderator) login: display name + organiser code, no email.
+   * Organiser (moderator) login, or logging back in: organiser name + organiser code, no email.
    * Organiser accounts can view and delete, but never post, heart or vote.
    */
   async organizerLogin(displayName: string, code: string): Promise<Profile> {
-    if (!this.userId()) {
-      const { data, error } = await this.supabase.auth.signInAnonymously();
-      if (error || !data.user) throw error ?? new Error('Sign-in failed');
-      this.userId.set(data.user.id);
-    }
-
+    await this.ensureLogin();
     const { data, error } = await this.supabase
       .rpc('organizer_login', { p_display_name: normalizeDisplayName(displayName), p_code: code })
       .single();
     if (error) {
       if (/already checked in/.test(error.message)) {
-        throw new UserFacingError('That name is already in use. Try e.g. "Werner – Organiser".');
+        throw new UserFacingError('That name is already used by a guest. Try e.g. "Werner – Organiser".');
       }
       throw error;
     }
     const profile = data as Profile | null;
     if (!profile?.id) throw new UserFacingError('That organiser code is not correct.');
+    return this.loggedIn(profile);
+  }
 
-    this.profile.set(profile);
-    this.removedNotice.set(false);
-    return profile;
+  /** Logs this device out. Photos, notes, hearts and votes are kept; checking in again restores them. */
+  async logout(reason: Exclude<SessionNotice, null> = 'logged_out'): Promise<void> {
+    this.leaving = true;
+    try {
+      await this.supabase.rpc('end_session');
+      await this.supabase.auth.signOut();
+    } finally {
+      this.leaving = false;
+      this.clear();
+      this.notice.set(reason);
+    }
   }
 
   /**
-   * Deletes this user's profile (which cascades to all their posts) and signs the device out.
-   * Guests: delete their storage files first (ReunionService.removeUserFiles).
-   * Organisers: this is their "Log out" (they have no posts).
+   * Deletes this guest's profile (which cascades to all their posts) and signs the device out.
+   * Delete the guest's storage files first (ReunionService.removeUserFiles).
    */
   async leave(): Promise<void> {
-    const uid = this.userId();
+    const id = this.userId();
     this.leaving = true;
     try {
-      if (uid) {
-        const { error } = await this.supabase.from('profiles').delete().eq('id', uid);
+      if (id) {
+        const { error } = await this.supabase.from('profiles').delete().eq('id', id);
         if (error) throw error;
       }
       await this.supabase.auth.signOut();
       this.clear();
+      this.notice.set(null);
     } finally {
       this.leaving = false;
     }
   }
 
-  private leaving = false;
-
   /** Called when this guest's profile was deleted (by an organiser). */
   handleRemoved(): void {
     if (this.leaving || !this.profile()) return;
     this.profile.set(null);
-    this.removedNotice.set(true);
+    this.notice.set('removed');
+  }
+
+  private async ensureLogin(): Promise<void> {
+    if (this.authUid) return;
+    const { data, error } = await this.supabase.auth.signInAnonymously();
+    if (error || !data.user) throw error ?? new Error('Sign-in failed');
+    this.authUid = data.user.id;
+  }
+
+  private loggedIn(profile: Profile): Profile {
+    this.profile.set(profile);
+    this.notice.set(null);
+    this.touch(true);
+    return profile;
   }
 
   private clear(): void {
-    this.userId.set(null);
+    this.authUid = null;
     this.profile.set(null);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Inactivity (stored per browser so closing the tab counts as inactive time)
+  // ---------------------------------------------------------------------------
+
+  private touch(force = false): void {
+    const now = Date.now();
+    if (!force && now - this.lastWrite < 15_000) return;
+    this.lastWrite = now;
+    try {
+      localStorage.setItem(LAST_ACTIVE_KEY, String(now));
+    } catch {
+      // Storage unavailable (private mode): fall back to the in-memory timestamp.
+    }
+  }
+
+  private lastActive(): number {
+    try {
+      const value = Number(localStorage.getItem(LAST_ACTIVE_KEY));
+      if (value) return Math.max(value, this.lastWrite);
+    } catch {
+      // Storage unavailable.
+    }
+    return this.lastWrite || Date.now();
+  }
+
+  private isIdle(): boolean {
+    return Date.now() - this.lastActive() > INACTIVITY_LIMIT_MS;
+  }
+
+  /** Logs out when idle for too long. Returns true when it did. */
+  private expireIfIdle(): boolean {
+    if (!this.profile() || !this.isIdle()) return false;
+    void this.logout('inactive').catch(() => undefined);
+    return true;
   }
 }

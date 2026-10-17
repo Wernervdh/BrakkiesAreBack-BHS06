@@ -125,12 +125,16 @@ const TAB_KEY = 'brakke_tab';
               <button type="button" class="menu-item" (click)="menuOpen.set(false); toolsOpen.set(true)">
                 🛡️ <span>Organiser tools &amp; export</span>
               </button>
-              <button type="button" class="menu-item text-red-300" (click)="logout()">
-                🚪 <span>Log out</span>
-              </button>
-            } @else {
+            }
+            <button type="button" class="menu-item" (click)="logout()">
+              🚪 <span>Log out</span>
+              @if (!session.isOrganizer()) {
+                <span class="ml-auto text-[11px] font-normal text-slate-400">your posts stay</span>
+              }
+            </button>
+            @if (!session.isOrganizer()) {
               <button type="button" class="menu-item text-red-300" (click)="leave()">
-                🚪 <span>Leave &amp; delete my data</span>
+                🗑️ <span>Leave &amp; delete my data</span>
               </button>
             }
 
@@ -186,7 +190,7 @@ export class DashboardComponent implements OnInit {
   readonly toolsOpen = signal(false);
 
   constructor() {
-    // An organiser removed this guest: stop live updates and go back to the welcome page.
+    // Logged out (inactive, other phone, organiser removed them): stop live updates and go to the welcome page.
     effect(() => {
       if (!this.session.profile()) {
         this.reunion.stop();
@@ -238,20 +242,22 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  /** Organisers only: ends the moderator session (they have no posts to lose). */
+  /** Logs out this device. Everything the guest posted is kept. */
   async logout(): Promise<void> {
     this.menuOpen.set(false);
+    const name = this.session.profile()?.display_name ?? '';
     const ok = await this.ui.confirm({
       title: 'Log out?',
-      message: 'You can log in again any time from the welcome page with the organiser code.',
+      message: this.session.isOrganizer()
+        ? 'Log in again any time from the welcome page with your organiser name and the organiser code.'
+        : `Your photos, notes, hearts and votes stay.\n\nTo log back in, use exactly the same name and email:\n${name}`,
       confirmLabel: 'Log out'
     });
     if (!ok) return;
     try {
-      await this.session.leave();
+      await this.session.logout('logged_out');
       this.reunion.stop();
       await this.router.navigate(['/welcome']);
-      this.ui.toast('Logged out.');
     } catch (err) {
       this.ui.error(friendlyError(err, 'Could not log out. Please try again.'));
     }
