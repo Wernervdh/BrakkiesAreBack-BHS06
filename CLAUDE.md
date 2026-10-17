@@ -47,6 +47,7 @@ Optional: enable CAPTCHA (Turnstile) for anonymous sign-ins against scripted spa
 ## Testing
 - DB: PGlite harness (kept outside the repo in the session scratchpad) stubs `auth.uid()`, roles and the storage schema, runs the migration twice and checks the RLS/RPC scenarios. Docker isn't available on this machine (WSL feature off).
 - UI: headless Chromium smoke tests via the browser-automation skill against `ng serve`.
+- E2E (2026-10-17, against the live Supabase project after the migration): two guests in separate browser contexts — check-in, duplicate name/email rejected, Who's Here no duplicates, photo + tag live, heart toggle, untag, note + tag, Then & Now + vote (no self-vote), Story hidden for guests, organiser code (wrong/right), Story preview, shortlist + ZIP, guest blocked from Facebook pack, organiser removes guest (all content gone, guest sent to welcome), leave & delete. 21/21 passed, 0 console errors. Test guests clean up after themselves (orphan anonymous auth users remain; harmless).
 - `npx ng build` must be warning-free.
 
 ## Known limitations / ideas
