@@ -6,8 +6,9 @@
 --
 --   select private.set_organizer_code('replace-with-a-long-secret-code');
 --
--- Organisers then open the app > menu > "Organiser access" and enter the code.
--- An organiser can also grant organiser rights to other guests in "Who's Here".
+-- Organisers then open the app's welcome page > "Organiser login" and enter a
+-- name + the code. Organiser accounts are moderators: they can view and delete,
+-- but cannot post, upload, heart or vote.
 --
--- To revoke someone's rights from SQL:
---   update public.profiles set is_organizer = false where display_name = 'Name Surname';
+-- To remove an organiser from SQL (they are logged out):
+--   delete from public.profiles where display_name = 'Werner – Organiser' and is_organizer;

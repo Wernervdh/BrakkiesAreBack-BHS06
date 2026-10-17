@@ -7,7 +7,10 @@ const DB_MESSAGES = [
   'You cannot remove your own organiser rights.',
   'Only organisers can do this.',
   'Please enter a valid email address.',
-  'Please enter your name and surname (3 to 60 characters).'
+  'Please enter your name and surname (3 to 60 characters).',
+  'Please enter a name of 3 to 60 characters.',
+  'Organisers can only moderate, not post.',
+  'This phone is checked in as a guest. Use another browser or phone for the organiser login.'
 ];
 
 /** Turns Supabase / network / validation errors into a short message for guests. */

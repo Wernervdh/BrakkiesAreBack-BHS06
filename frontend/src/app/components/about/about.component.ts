@@ -94,9 +94,13 @@ import { CrestComponent } from '../shared/crest.component';
         <section class="card p-5 space-y-3">
           <h3 class="text-lg font-bold text-white">For organisers</h3>
           <p>
-            Open the menu (☰) and choose <strong class="text-white">Organiser access</strong>, then enter the organiser code
-            you received from the committee. Organisers can remove posts and guests, grant organiser rights to other
-            classmates, download photos in full size and export everything as a spreadsheet.
+            On the welcome page, tap <strong class="text-white">Organiser login</strong> and enter a name plus the organiser
+            code from the committee. Organiser accounts are for moderating only: they can remove photos, notes and guests
+            that aren't appropriate, publish the Story, prepare the Facebook pack and export spreadsheets, but they can't
+            post, heart or vote. Use <strong class="text-white">☰ → Log out</strong> when you're done.
+          </p>
+          <p class="text-sm text-slate-400">
+            Want to take part as yourself too? Check in as a normal guest on another phone or browser.
           </p>
         </section>
 

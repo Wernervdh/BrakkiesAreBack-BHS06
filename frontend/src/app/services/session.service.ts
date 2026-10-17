@@ -81,16 +81,38 @@ export class SessionService {
     return profile;
   }
 
-  async claimOrganizer(code: string): Promise<boolean> {
-    const { data, error } = await this.supabase.rpc('claim_organizer', { code });
-    if (error) throw error;
-    if (data === true) await this.refreshProfile();
-    return data === true;
+  /**
+   * Organiser (moderator) login: display name + organiser code, no email.
+   * Organiser accounts can view and delete, but never post, heart or vote.
+   */
+  async organizerLogin(displayName: string, code: string): Promise<Profile> {
+    if (!this.userId()) {
+      const { data, error } = await this.supabase.auth.signInAnonymously();
+      if (error || !data.user) throw error ?? new Error('Sign-in failed');
+      this.userId.set(data.user.id);
+    }
+
+    const { data, error } = await this.supabase
+      .rpc('organizer_login', { p_display_name: normalizeDisplayName(displayName), p_code: code })
+      .single();
+    if (error) {
+      if (/already checked in/.test(error.message)) {
+        throw new UserFacingError('That name is already in use. Try e.g. "Werner – Organiser".');
+      }
+      throw error;
+    }
+    const profile = data as Profile | null;
+    if (!profile?.id) throw new UserFacingError('That organiser code is not correct.');
+
+    this.profile.set(profile);
+    this.removedNotice.set(false);
+    return profile;
   }
 
   /**
-   * Deletes this guest's profile (which cascades to all their posts) and signs the device out.
-   * Delete the guest's storage files first (ReunionService.removeUserFiles).
+   * Deletes this user's profile (which cascades to all their posts) and signs the device out.
+   * Guests: delete their storage files first (ReunionService.removeUserFiles).
+   * Organisers: this is their "Log out" (they have no posts).
    */
   async leave(): Promise<void> {
     const uid = this.userId();

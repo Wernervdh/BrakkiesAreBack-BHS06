@@ -19,7 +19,7 @@ import { initials } from '../../../utils/format';
           <p class="text-xs text-slate-400">Classmates who checked in tonight.</p>
         </div>
         <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-brakke-gold/15 text-brakke-gold border border-brakke-gold/30 shrink-0">
-          {{ reunion.profiles().length }} checked in
+          {{ reunion.guests().length }} checked in
         </span>
       </div>
 
@@ -59,16 +59,7 @@ import { initials } from '../../../utils/format';
               </div>
 
               @if (session.isOrganizer() && guest.id !== session.userId()) {
-                <div class="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-brakke-line bg-brakke-surface text-slate-200 hover:border-brakke-gold transition"
-                    (click)="toggleOrganizer(guest)"
-                  >
-                    {{ guest.is_organizer ? 'Revoke organiser' : 'Make organiser' }}
-                  </button>
-                  <button type="button" class="btn-ghost-danger" (click)="remove(guest)" aria-label="Remove guest">🗑️</button>
-                </div>
+                <button type="button" class="btn-ghost-danger shrink-0" (click)="remove(guest)" aria-label="Remove guest">🗑️</button>
               }
             </li>
           } @empty {
@@ -95,32 +86,23 @@ export class GuestsComponent {
       .sort((a, b) => Number(b.is_organizer) - Number(a.is_organizer) || a.display_name.localeCompare(b.display_name));
   });
 
-  async toggleOrganizer(guest: Profile): Promise<void> {
-    const make = !guest.is_organizer;
-    const ok = await this.ui.confirm({
-      title: make ? `Make ${guest.display_name} an organiser?` : `Revoke organiser rights?`,
-      message: make
-        ? 'Organisers can delete any photo, note or guest, and export all data including emails.'
-        : `${guest.display_name} will no longer be able to moderate.`,
-      confirmLabel: make ? 'Make organiser' : 'Revoke'
-    });
-    if (!ok) return;
-    try {
-      await this.reunion.setOrganizer(guest, make);
-      this.ui.success(make ? `${guest.display_name} is now an organiser.` : 'Organiser rights revoked.');
-    } catch (err) {
-      this.ui.error(friendlyError(err));
-    }
-  }
-
   async remove(guest: Profile): Promise<void> {
-    const ok = await this.ui.confirm({
-      title: `Remove ${guest.display_name}?`,
-      message:
-        'This removes them from Who\'s Here and permanently deletes everything they posted: photos, notes, Then & Now entry, hearts and votes.\n\nThey will be signed out, and their name becomes free to use again.',
-      confirmLabel: 'Remove & delete all',
-      danger: true
-    });
+    const ok = await this.ui.confirm(
+      guest.is_organizer
+        ? {
+            title: `Remove organiser ${guest.display_name}?`,
+            message: 'They will be logged out and lose organiser access until they log in again with the organiser code.',
+            confirmLabel: 'Remove organiser',
+            danger: true
+          }
+        : {
+            title: `Remove ${guest.display_name}?`,
+            message:
+              'This removes them from Who\'s Here and permanently deletes everything they posted: photos, notes, Then & Now entry, hearts and votes.\n\nThey will be signed out, and their name becomes free to use again.',
+            confirmLabel: 'Remove & delete all',
+            danger: true
+          }
+    );
     if (!ok) return;
     try {
       await this.reunion.removeGuest(guest);

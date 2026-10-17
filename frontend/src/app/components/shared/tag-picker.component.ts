@@ -64,7 +64,7 @@ export class TagPickerComponent {
   readonly maxTags = MAX_TAGS;
 
   private readonly others = computed(() =>
-    this.reunion.profiles().filter((p) => p.id !== this.session.userId())
+    this.reunion.guests().filter((p) => p.id !== this.session.userId())
   );
 
   readonly selectedProfiles = computed(() =>

@@ -17,7 +17,7 @@ import { ThenNowModalComponent } from '../../modals/then-now-modal.component';
           <h2 class="text-lg font-bold text-white">🎭 Then &amp; Now</h2>
           <p class="text-xs text-slate-400">2006 matric photo vs 2026. Vote for "Most Changed"!</p>
         </div>
-        @if (!hasMine()) {
+        @if (!hasMine() && !session.isOrganizer()) {
           <button type="button" class="btn-primary px-3 py-2 text-xs shrink-0" (click)="adding.set(true)">➕ Add mine</button>
         }
       </div>
@@ -31,8 +31,10 @@ import { ThenNowModalComponent } from '../../modals/then-now-modal.component';
         <div class="card py-14 px-6 text-center">
           <p class="text-4xl mb-2">🎓</p>
           <p class="font-bold text-white">No comparisons yet</p>
-          <p class="text-sm text-slate-400 mt-1 mb-5">Dig up your matric photo and take a selfie now!</p>
-          <button type="button" class="btn-primary" (click)="adding.set(true)">Add my Then &amp; Now</button>
+          @if (!session.isOrganizer()) {
+            <p class="text-sm text-slate-400 mt-1 mb-5">Dig up your matric photo and take a selfie now!</p>
+            <button type="button" class="btn-primary" (click)="adding.set(true)">Add my Then &amp; Now</button>
+          }
         </div>
       } @else {
         <div class="space-y-4">
@@ -62,6 +64,8 @@ import { ThenNowModalComponent } from '../../modals/then-now-modal.component';
               <div class="flex items-center gap-2">
                 @if (isMine(entry)) {
                   <p class="flex-1 text-center text-xs text-slate-400 py-3">This is your entry. Others can vote for it.</p>
+                } @else if (session.isOrganizer()) {
+                  <p class="flex-1 text-center text-xs text-slate-400 py-3">Guests vote. Organisers can remove entries.</p>
                 } @else {
                   <button
                     type="button"

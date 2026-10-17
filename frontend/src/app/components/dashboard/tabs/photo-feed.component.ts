@@ -37,8 +37,12 @@ import { TagListComponent } from '../../shared/tag-list.component';
         <div class="card py-14 px-6 text-center">
           <p class="text-4xl mb-2">📸</p>
           <p class="font-bold text-white">No photos yet</p>
-          <p class="text-sm text-slate-400 mt-1 mb-5">Be the first to capture a reunion moment.</p>
-          <button type="button" class="btn-primary" (click)="snap.emit()">Take the first photo</button>
+          @if (session.isOrganizer()) {
+            <p class="text-sm text-slate-400 mt-1">Guests' photos will appear here live.</p>
+          } @else {
+            <p class="text-sm text-slate-400 mt-1 mb-5">Be the first to capture a reunion moment.</p>
+            <button type="button" class="btn-primary" (click)="snap.emit()">Take the first photo</button>
+          }
         </div>
       } @else {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -73,6 +77,11 @@ import { TagListComponent } from '../../shared/tag-list.component';
                     @if (canDelete(photo)) {
                       <button type="button" class="btn-ghost-danger" (click)="remove(photo)" aria-label="Delete photo">🗑️</button>
                     }
+                    @if (session.isOrganizer()) {
+                      <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-brakke-surface border-brakke-line text-slate-300" title="Hearts">
+                        <span>❤️</span><span class="text-xs font-bold tabular-nums">{{ photo.likes_count }}</span>
+                      </span>
+                    } @else {
                     <button
                       type="button"
                       (click)="like(photo)"
@@ -84,6 +93,7 @@ import { TagListComponent } from '../../shared/tag-list.component';
                       <span>{{ liked(photo) ? '❤️' : '🤍' }}</span>
                       <span class="text-xs font-bold tabular-nums">{{ photo.likes_count }}</span>
                     </button>
+                    }
                   </div>
                 </div>
               </div>
@@ -130,7 +140,7 @@ import { TagListComponent } from '../../shared/tag-list.component';
 })
 export class PhotoFeedComponent {
   readonly reunion = inject(ReunionService);
-  private readonly session = inject(SessionService);
+  readonly session = inject(SessionService);
   private readonly ui = inject(UiService);
 
   readonly snap = output<void>();

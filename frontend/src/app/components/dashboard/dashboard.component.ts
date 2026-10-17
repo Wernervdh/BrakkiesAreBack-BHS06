@@ -10,7 +10,6 @@ import { CapsuleComponent } from './tabs/capsule.component';
 import { ThenNowComponent } from './tabs/then-now.component';
 import { GuestsComponent } from './tabs/guests.component';
 import { PhotoModalComponent } from '../modals/photo-modal.component';
-import { OrganizerAccessModalComponent } from '../modals/organizer-access-modal.component';
 import { OrganizerToolsModalComponent } from '../modals/organizer-tools-modal.component';
 
 type Tab = 'feed' | 'capsule' | 'then_now' | 'guests';
@@ -28,7 +27,6 @@ const TAB_KEY = 'brakke_tab';
     ThenNowComponent,
     GuestsComponent,
     PhotoModalComponent,
-    OrganizerAccessModalComponent,
     OrganizerToolsModalComponent
   ],
   template: `
@@ -49,7 +47,11 @@ const TAB_KEY = 'brakke_tab';
           </button>
 
           <div class="flex items-center gap-2 shrink-0">
-            <button type="button" class="btn-primary px-3.5 py-2" (click)="photoModalOpen.set(true)">📸 Snap</button>
+            @if (session.isOrganizer()) {
+              <span class="px-2.5 py-1.5 rounded-full text-xs font-bold bg-brakke-red/20 text-red-200 border border-brakke-red/40">🛡️ Organiser</span>
+            } @else {
+              <button type="button" class="btn-primary px-3.5 py-2" (click)="photoModalOpen.set(true)">📸 Snap</button>
+            }
             <button
               type="button"
               class="btn-secondary w-10 h-10 p-0 text-lg"
@@ -105,7 +107,7 @@ const TAB_KEY = 'brakke_tab';
               <div class="min-w-0">
                 <p class="font-bold text-white truncate">{{ session.profile()?.display_name }}</p>
                 <p class="text-xs text-slate-400">
-                  {{ session.isOrganizer() ? '🛡️ Organiser' : 'Checked in on this phone' }}
+                  {{ session.isOrganizer() ? '🛡️ Organiser (moderator)' : 'Checked in on this phone' }}
                 </p>
               </div>
             </div>
@@ -123,14 +125,14 @@ const TAB_KEY = 'brakke_tab';
               <button type="button" class="menu-item" (click)="menuOpen.set(false); toolsOpen.set(true)">
                 🛡️ <span>Organiser tools &amp; export</span>
               </button>
+              <button type="button" class="menu-item text-red-300" (click)="logout()">
+                🚪 <span>Log out</span>
+              </button>
             } @else {
-              <button type="button" class="menu-item" (click)="menuOpen.set(false); accessOpen.set(true)">
-                🔑 <span>Organiser access</span>
+              <button type="button" class="menu-item text-red-300" (click)="leave()">
+                🚪 <span>Leave &amp; delete my data</span>
               </button>
             }
-            <button type="button" class="menu-item text-red-300" (click)="leave()">
-              🚪 <span>Leave &amp; delete my data</span>
-            </button>
 
             <button type="button" class="btn-secondary w-full mt-3" (click)="menuOpen.set(false)">Close</button>
           </div>
@@ -139,9 +141,6 @@ const TAB_KEY = 'brakke_tab';
 
       @if (photoModalOpen()) {
         <app-photo-modal (closed)="photoModalOpen.set(false)" (posted)="onPhotoPosted()" />
-      }
-      @if (accessOpen()) {
-        <app-organizer-access-modal (closed)="accessOpen.set(false)" />
       }
       @if (toolsOpen()) {
         <app-organizer-tools-modal (closed)="toolsOpen.set(false)" />
@@ -184,7 +183,6 @@ export class DashboardComponent implements OnInit {
   readonly tab = signal<Tab>(this.restoreTab());
   readonly menuOpen = signal(false);
   readonly photoModalOpen = signal(false);
-  readonly accessOpen = signal(false);
   readonly toolsOpen = signal(false);
 
   constructor() {
@@ -237,6 +235,25 @@ export class DashboardComponent implements OnInit {
       this.ui.toast('You have left the reunion app. Your data was deleted.');
     } catch (err) {
       this.ui.error(friendlyError(err, 'Could not delete your data. Please try again.'));
+    }
+  }
+
+  /** Organisers only: ends the moderator session (they have no posts to lose). */
+  async logout(): Promise<void> {
+    this.menuOpen.set(false);
+    const ok = await this.ui.confirm({
+      title: 'Log out?',
+      message: 'You can log in again any time from the welcome page with the organiser code.',
+      confirmLabel: 'Log out'
+    });
+    if (!ok) return;
+    try {
+      await this.session.leave();
+      this.reunion.stop();
+      await this.router.navigate(['/welcome']);
+      this.ui.toast('Logged out.');
+    } catch (err) {
+      this.ui.error(friendlyError(err, 'Could not log out. Please try again.'));
     }
   }
 

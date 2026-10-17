@@ -14,7 +14,8 @@ import { downloadText, toCsv } from '../../utils/format';
         <div>
           <h3 id="toolsTitle" class="text-lg font-bold text-white">🛡️ Organiser tools</h3>
           <p class="text-sm text-slate-400 mt-1">
-            You can delete any photo or note (🗑️), and remove guests or grant organiser rights in Who's Here.
+            You can remove any photo, note or Then &amp; Now entry that isn't appropriate (🗑️), and remove guests in Who's Here.
+            Organiser accounts can't post, heart or vote.
           </p>
         </div>
 

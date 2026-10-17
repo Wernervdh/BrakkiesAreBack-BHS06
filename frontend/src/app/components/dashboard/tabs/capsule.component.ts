@@ -45,8 +45,10 @@ const BADGE: Record<MessageCategory, string> = {
         <div class="card py-14 px-6 text-center">
           <p class="text-4xl mb-2">📜</p>
           <p class="font-bold text-white">No notes here yet</p>
-          <p class="text-sm text-slate-400 mt-1 mb-5">Share a memory or thank the organising committee!</p>
-          <button type="button" class="btn-primary" (click)="writing.set(true)">Write a note</button>
+          @if (!session.isOrganizer()) {
+            <p class="text-sm text-slate-400 mt-1 mb-5">Share a memory or thank the organising committee!</p>
+            <button type="button" class="btn-primary" (click)="writing.set(true)">Write a note</button>
+          }
         </div>
       } @else {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -77,13 +79,15 @@ const BADGE: Record<MessageCategory, string> = {
       }
     </section>
 
-    <button
-      type="button"
-      (click)="writing.set(true)"
-      class="fixed bottom-24 right-5 z-30 btn-primary rounded-full px-5 shadow-xl shadow-black/40"
-    >
-      ✍️ Write note
-    </button>
+    @if (!session.isOrganizer()) {
+      <button
+        type="button"
+        (click)="writing.set(true)"
+        class="fixed bottom-24 right-5 z-30 btn-primary rounded-full px-5 shadow-xl shadow-black/40"
+      >
+        ✍️ Write note
+      </button>
+    }
 
     @if (writing()) {
       <app-message-modal [initialCategory]="filter() ?? 'thank_you'" (closed)="writing.set(false)" />

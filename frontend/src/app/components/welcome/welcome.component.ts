@@ -3,13 +3,14 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { SessionService } from '../../services/session.service';
 import { CrestComponent } from '../shared/crest.component';
+import { OrganizerLoginModalComponent } from '../modals/organizer-login-modal.component';
 import { friendlyError } from '../../utils/errors';
 import { isValidEmail, isValidFullName, normalizeDisplayName } from '../../utils/format';
 
 @Component({
   selector: 'app-welcome',
   standalone: true,
-  imports: [FormsModule, RouterLink, CrestComponent],
+  imports: [FormsModule, RouterLink, CrestComponent, OrganizerLoginModalComponent],
   template: `
     <div class="relative min-h-dvh flex flex-col items-center px-5 py-8 overflow-hidden">
       <div class="absolute inset-0 crest-stripes pointer-events-none"></div>
@@ -115,7 +116,14 @@ import { isValidEmail, isValidFullName, normalizeDisplayName } from '../../utils
       <footer class="relative w-full max-w-md text-center text-xs text-slate-400 space-y-2">
         <a routerLink="/about" class="inline-block font-semibold text-brakke-gold hover:underline">About this app &amp; how it works</a>
         <p>No app download or password needed.</p>
+        <button type="button" class="text-slate-500 hover:text-slate-300 underline underline-offset-2" (click)="orgLoginOpen.set(true)">
+          Organiser login
+        </button>
       </footer>
+
+      @if (orgLoginOpen()) {
+        <app-organizer-login-modal (closed)="orgLoginOpen.set(false)" />
+      }
     </div>
   `
 })
@@ -128,6 +136,7 @@ export class WelcomeComponent {
   consent = false;
   readonly loading = signal(false);
   readonly errorMessage = signal('');
+  readonly orgLoginOpen = signal(false);
 
   async submit(): Promise<void> {
     const name = normalizeDisplayName(this.displayName);

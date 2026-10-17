@@ -46,7 +46,7 @@ interface Chapter {
           <div class="flex gap-6 mt-2 text-center">
             <div><p class="text-2xl font-extrabold text-white tabular-nums">{{ photos().length }}</p><p class="text-[11px] text-slate-400 uppercase">photos</p></div>
             <div><p class="text-2xl font-extrabold text-white tabular-nums">{{ reunion.messages().length }}</p><p class="text-[11px] text-slate-400 uppercase">notes</p></div>
-            <div><p class="text-2xl font-extrabold text-white tabular-nums">{{ reunion.profiles().length }}</p><p class="text-[11px] text-slate-400 uppercase">Brakkies</p></div>
+            <div><p class="text-2xl font-extrabold text-white tabular-nums">{{ reunion.guests().length }}</p><p class="text-[11px] text-slate-400 uppercase">Brakkies</p></div>
           </div>
         </div>
       </section>

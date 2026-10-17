@@ -3,6 +3,7 @@
 The app has no server of its own; Supabase is the backend (Postgres + Row Level Security, anonymous Auth, Realtime, Storage).
 
 - `supabase/migrations/20261017000000_secure_rebuild.sql`: the full schema, security policies, RPC functions, realtime and storage setup. Re-runnable. **Running it deletes all app data.**
+- `supabase/migrations/20261017120000_organiser_accounts.sql`: separate moderator-only organiser accounts (organiser login, no posting/hearts/votes for organisers). Keeps data; run after the rebuild.
 - `supabase/migrations/20261016000000_init_reunion_schema.sql`: the original (insecure) schema, kept for history. The rebuild drops everything it created.
 - `supabase/seed.sql`: how to set the organiser code.
 

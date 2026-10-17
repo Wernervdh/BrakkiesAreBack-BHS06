@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { STORAGE_BUCKET, SupabaseService } from './supabase.service';
 import { SessionService } from './session.service';
@@ -34,6 +34,8 @@ export class ReunionService {
   readonly messages = signal<Message[]>([]);
   readonly thenNow = signal<ThenNowEntry[]>([]);
   readonly profiles = signal<Profile[]>([]);
+  /** Checked-in classmates (organiser accounts are moderators, not guests). */
+  readonly guests = computed(() => this.profiles().filter((p) => !p.is_organizer));
   readonly likedPhotoIds = signal<ReadonlySet<string>>(new Set());
   readonly votedEntryIds = signal<ReadonlySet<string>>(new Set());
   /** The Story page is visible to guests once an organiser publishes it. */
@@ -181,7 +183,7 @@ export class ReunionService {
   // ---------------------------------------------------------------------------
 
   async uploadPhoto(file: File, prompt: PhotoPrompt, caption: string, tagIds: string[]): Promise<void> {
-    const uid = this.requireUser();
+    const uid = this.requireGuest();
     const image = await prepareImage(file);
     const path = `photos/${uid}/${randomId()}.jpg`;
     await this.uploadFile(path, image);
@@ -209,7 +211,7 @@ export class ReunionService {
   }
 
   async toggleLike(photo: Photo): Promise<void> {
-    const uid = this.requireUser();
+    const uid = this.requireGuest();
     const liked = this.likedPhotoIds().has(photo.id);
     this.applyLike(photo.id, !liked);
 
@@ -247,7 +249,7 @@ export class ReunionService {
   // ---------------------------------------------------------------------------
 
   async postMessage(content: string, category: MessageCategory, tagIds: string[]): Promise<void> {
-    this.requireUser();
+    this.requireGuest();
     const { data, error } = await this.supabase
       .from('messages')
       .insert({ content: content.trim(), category })
@@ -325,7 +327,7 @@ export class ReunionService {
   // ---------------------------------------------------------------------------
 
   async uploadThenNow(thenFile: File, nowFile: File): Promise<void> {
-    const uid = this.requireUser();
+    const uid = this.requireGuest();
     if (this.thenNow().some((e) => e.owner_id === uid)) {
       throw new UserFacingError('You already have a Then & Now entry. Delete it first to post a new one.');
     }
@@ -364,7 +366,7 @@ export class ReunionService {
   }
 
   async toggleVote(entry: ThenNowEntry): Promise<void> {
-    const uid = this.requireUser();
+    const uid = this.requireGuest();
     if (entry.owner_id === uid) throw new UserFacingError('You cannot vote for yourself. 😉');
     const voted = this.votedEntryIds().has(entry.id);
     this.applyVote(entry.id, !voted);
@@ -424,17 +426,6 @@ export class ReunionService {
         if (removeError) throw removeError;
       }
     }
-  }
-
-  async setOrganizer(profile: Profile, makeOrganizer: boolean): Promise<void> {
-    const { error } = await this.supabase.rpc('set_organizer', {
-      target: profile.id,
-      make_organizer: makeOrganizer
-    });
-    if (error) throw error;
-    this.profiles.update((list) =>
-      list.map((p) => (p.id === profile.id ? { ...p, is_organizer: makeOrganizer } : p))
-    );
   }
 
   /** Organisers: add / remove a photo from the Facebook shortlist. */
@@ -595,9 +586,11 @@ export class ReunionService {
     if (error) console.warn('Could not remove files', paths, error);
   }
 
-  private requireUser(): string {
+  /** Posting, hearts and votes are for guests only; organisers moderate. */
+  private requireGuest(): string {
     const uid = this.session.userId();
     if (!uid || !this.session.profile()) throw new UserFacingError('Please check in first.');
+    if (this.session.isOrganizer()) throw new UserFacingError('Organisers can only moderate, not post.');
     return uid;
   }
 }

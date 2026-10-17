@@ -18,8 +18,9 @@ Guests scan a QR code, check in on their phone (no app, no password) and share t
 7. You can delete your own posts any time, remove your tag from someone else's post, or use **☰ → Leave & delete my data**.
 
 ### For organisers
-- **Get organiser rights:** ☰ → *Organiser access* → enter the organiser code. An organiser can also tap *Make organiser* next to a classmate in *Who's Here*.
-- **Moderate:** delete any photo or note (🗑️), remove a guest (this deletes **everything** they posted).
+- **Log in:** on the welcome page tap **Organiser login**, enter a name (e.g. "Werner – Organiser") and the organiser code. No email needed. **☰ → Log out** when done.
+- **Moderator only:** organiser accounts can view everything and remove what isn't appropriate, but **cannot post, upload, heart or vote** (enforced by the database). To join in as yourself, check in as a normal guest on another phone or browser.
+- **Moderate:** delete any photo, note or Then & Now entry (🗑️); remove a guest (this deletes **everything** they posted) or another organiser.
 - **📖 The Story:** a chronological album of the whole night, hour by hour. It stays hidden until an organiser publishes it in ☰ → *Organiser tools*. Organisers can preview it first.
 - **📘 Facebook pack:** ☰ → *Organiser tools* → *Open Facebook pack*. Tick the photos that should go to Facebook (the shortlist is shared by all organisers), then *Download ZIP*. It contains the photos plus `captions.csv` with each caption and who to tag. Email, WhatsApp or Google Drive the ZIP to whoever posts in the class Facebook group. (Facebook doesn't let apps post into groups or tag people automatically.)
 - **Exports:** guest list, notes and photo list (with links) as CSV for Excel or Google Sheets.
@@ -27,7 +28,7 @@ Guests scan a QR code, check in on their phone (no app, no password) and share t
 ## Setup (one time, Supabase dashboard)
 1. **Authentication → Sign In / Providers → Allow anonymous sign-ins: ON.**
 2. **Authentication → Rate limits:** raise *anonymous sign-ins per hour* (default 30 per IP; everyone on venue Wi-Fi shares one IP), e.g. to 300.
-3. **SQL editor:** run [`backend/supabase/migrations/20261017000000_secure_rebuild.sql`](backend/supabase/migrations/20261017000000_secure_rebuild.sql). ⚠️ It wipes all existing app data.
+3. **SQL editor:** run [`backend/supabase/migrations/20261017000000_secure_rebuild.sql`](backend/supabase/migrations/20261017000000_secure_rebuild.sql) (⚠️ wipes all app data), then [`20261017120000_organiser_accounts.sql`](backend/supabase/migrations/20261017120000_organiser_accounts.sql) (keeps data). Always run them in this order.
 4. **SQL editor:** set the organiser code (keep it out of git, because this repo is public):
    ```sql
    select private.set_organizer_code('a-long-secret-code');
