@@ -98,8 +98,8 @@ import { CrestComponent } from '../shared/crest.component';
           <p>
             On the welcome page, tap <strong class="text-white">🛡️ Organiser login</strong> and enter the organiser code from
             the committee. Organiser accounts are for moderating only: they can remove photos, notes and guests that aren't
-            appropriate, publish the Story, prepare the Facebook pack and export spreadsheets, but they can't post, heart or
-            vote. Use <strong class="text-white">☰ → Log out</strong> when you're done.
+            appropriate, publish the Story and export spreadsheets, but they can't post, heart or vote. The super admin (a
+            separate code) can also prepare the Facebook pack. Use <strong class="text-white">☰ → Log out</strong> when you're done.
           </p>
           <p class="text-sm text-slate-400">
             Want to take part as yourself too? Check in as a normal guest on another phone or browser.

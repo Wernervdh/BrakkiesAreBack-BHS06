@@ -48,7 +48,9 @@ const TAB_KEY = 'brakke_tab';
 
           <div class="flex items-center gap-2 shrink-0">
             @if (session.isOrganizer()) {
-              <span class="px-2.5 py-1.5 rounded-full text-xs font-bold bg-brakke-red/20 text-red-200 border border-brakke-red/40">🛡️ Organiser</span>
+              <span class="px-2.5 py-1.5 rounded-full text-xs font-bold bg-brakke-red/20 text-red-200 border border-brakke-red/40">
+                🛡️ {{ session.isSuperAdmin() ? 'Super admin' : 'Organiser' }}
+              </span>
             } @else {
               <button type="button" class="btn-primary px-3.5 py-2" (click)="photoModalOpen.set(true)">📸 Snap</button>
             }
@@ -107,7 +109,7 @@ const TAB_KEY = 'brakke_tab';
               <div class="min-w-0">
                 <p class="font-bold text-white truncate">{{ session.profile()?.display_name }}</p>
                 <p class="text-xs text-slate-400">
-                  {{ session.isOrganizer() ? '🛡️ Organiser (moderator)' : 'Checked in on this phone' }}
+                  {{ session.isSuperAdmin() ? '🛡️ Super admin' : session.isOrganizer() ? '🛡️ Organiser (moderator)' : 'Checked in on this phone' }}
                 </p>
               </div>
             </div>

@@ -71,9 +71,10 @@ import { initials } from '../../../utils/format';
               <div class="card p-3 flex items-center justify-between gap-3">
                 <p class="text-sm font-semibold text-slate-200 truncate">
                   {{ org.display_name }}
+                  @if (org.is_super_admin) { <span class="text-[10px] font-bold text-red-200 ml-1">SUPER ADMIN</span> }
                   @if (org.id === session.userId()) { <span class="text-[10px] font-bold text-brakke-gold ml-1">YOU</span> }
                 </p>
-                @if (org.id !== session.userId()) {
+                @if (org.id !== session.userId() && (!org.is_super_admin || session.isSuperAdmin())) {
                   <button type="button" class="btn-ghost-danger shrink-0" (click)="remove(org)" aria-label="Remove organiser session">🗑️</button>
                 }
               </div>

@@ -24,16 +24,18 @@ Guests scan a QR code, check in on their phone (no app, no password) and share t
 - **Moderator only:** organiser accounts can view everything and remove what isn't appropriate, but **cannot post, upload, heart or vote** (enforced by the database). To join in as yourself, check in as a normal guest on another phone or browser.
 - **Moderate:** delete any photo, note or Then & Now entry (🗑️); remove a guest (this deletes **everything** they posted). Who's Here shows classmates only; organisers also see an "Organisers logged in" list where they can end an unknown organiser session.
 - **📖 The Story:** a chronological album of the whole night, hour by hour. It stays hidden until an organiser publishes it in ☰ → *Organiser tools*. Organisers can preview it first.
-- **📘 Facebook pack:** ☰ → *Organiser tools* → *Open Facebook pack*. Tick the photos that should go to Facebook (the shortlist is shared by all organisers), then *Download ZIP*. It contains the photos plus `captions.csv` with each caption and who to tag. Email, WhatsApp or Google Drive the ZIP to whoever posts in the class Facebook group. (Facebook doesn't let apps post into groups or tag people automatically.)
+- **Super admin:** a second, separate **super admin code** (same login button). The super admin can do everything organisers can, **plus the Facebook pack**. Regular organisers can't open it and can't remove the super admin's session.
+- **📘 Facebook pack (super admin only):** ☰ → *Organiser tools* → *Open Facebook pack*. Tick the photos that should go to Facebook (the shortlist is shared by all organisers), then *Download ZIP*. It contains the photos plus `captions.csv` with each caption and who to tag. Email, WhatsApp or Google Drive the ZIP to whoever posts in the class Facebook group. (Facebook doesn't let apps post into groups or tag people automatically.)
 - **Exports:** guest list, notes and photo list (with links) as CSV for Excel or Google Sheets.
 
 ## Setup (one time, Supabase dashboard)
 1. **Authentication → Sign In / Providers → Allow anonymous sign-ins: ON.**
 2. **Authentication → Rate limits:** raise *anonymous sign-ins per hour* (default 30 per IP; everyone on venue Wi-Fi shares one IP), e.g. to 300.
-3. **SQL editor:** run [`backend/supabase/migrations/20261017000000_secure_rebuild.sql`](backend/supabase/migrations/20261017000000_secure_rebuild.sql) (⚠️ wipes all app data), then [`20261017120000_organiser_accounts.sql`](backend/supabase/migrations/20261017120000_organiser_accounts.sql) and [`20261017180000_log_out_and_back_in.sql`](backend/supabase/migrations/20261017180000_log_out_and_back_in.sql) (both keep data). Always run them in this order.
-4. **SQL editor:** set the organiser code (keep it out of git, because this repo is public):
+3. **SQL editor:** run [`backend/supabase/migrations/20261017000000_secure_rebuild.sql`](backend/supabase/migrations/20261017000000_secure_rebuild.sql) (⚠️ wipes all app data), then [`20261017120000_organiser_accounts.sql`](backend/supabase/migrations/20261017120000_organiser_accounts.sql) , [`20261017180000_log_out_and_back_in.sql`](backend/supabase/migrations/20261017180000_log_out_and_back_in.sql) and [`20261017220000_super_admin.sql`](backend/supabase/migrations/20261017220000_super_admin.sql) (all keep data). Always run them in this order.
+4. **SQL editor:** set the organiser code and the (different) super admin code. Keep both out of git, because this repo is public:
    ```sql
    select private.set_organizer_code('a-long-secret-code');
+   select private.set_super_admin_code('a-different-long-secret-code');
    ```
 5. **Storage → reunion-media:** delete the old test files (folders `photos`, `deleted`, `metadata`).
 

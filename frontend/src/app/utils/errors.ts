@@ -10,6 +10,7 @@ const DB_MESSAGES = [
   'Please enter your name and surname (3 to 60 characters).',
   'Please enter a name of 3 to 60 characters.',
   'Organisers can only moderate, not post.',
+  'Only the super admin can do this.',
   'This email address was already used with a different name. Use the exact name you checked in with.',
   'This phone is checked in as a guest. Use another browser or phone for the organiser login.'
 ];

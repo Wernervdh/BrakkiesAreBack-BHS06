@@ -28,7 +28,7 @@ import { friendlyError } from '../../utils/errors';
 
         <form (ngSubmit)="submit()" class="mt-4 space-y-4" novalidate>
           <div>
-            <label for="orgCode" class="label">Organiser code</label>
+            <label for="orgCode" class="label">Organiser or super admin code</label>
             <input
               id="orgCode"
               name="code"
@@ -82,7 +82,7 @@ export class OrganizerLoginModalComponent {
       await this.session.organizerLogin(this.code.trim());
       this.closed.emit();
       await this.router.navigate(['/feed']);
-      this.ui.success('Logged in as organiser. 🛡️');
+      this.ui.success(this.session.isSuperAdmin() ? 'Logged in as super admin. 🛡️' : 'Logged in as organiser. 🛡️');
     } catch (err) {
       this.errorMessage.set(friendlyError(err, 'Could not log in. Please try again.'));
     } finally {

@@ -32,6 +32,7 @@ export class SessionService {
   /** The current profile id: owner of photos, notes, hearts and votes. */
   readonly userId = computed(() => this.profile()?.id ?? null);
   readonly isOrganizer = computed(() => this.profile()?.is_organizer === true);
+  readonly isSuperAdmin = computed(() => this.profile()?.is_super_admin === true);
   readonly notice = signal<SessionNotice>(null);
 
   private authUid: string | null = null;

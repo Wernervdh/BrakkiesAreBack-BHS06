@@ -35,8 +35,8 @@ const storyGuard: CanActivateFn = async () => {
   return reunion.storyPublished() || session.isOrganizer() ? true : router.parseUrl('/feed');
 };
 
-/** Organiser-only pages (the database enforces the actual permissions). */
-const organizerGuard: CanActivateFn = async () => {
+/** The Facebook pack is for the super admin only (the database enforces it too). */
+const superAdminGuard: CanActivateFn = async () => {
   const session = inject(SessionService);
   const router = inject(Router);
   try {
@@ -44,7 +44,7 @@ const organizerGuard: CanActivateFn = async () => {
   } catch {
     return router.parseUrl('/welcome');
   }
-  return session.isOrganizer() ? true : router.parseUrl(session.profile() ? '/feed' : '/welcome');
+  return session.isSuperAdmin() ? true : router.parseUrl(session.profile() ? '/feed' : '/welcome');
 };
 
 /** Checked-in guests skip the welcome page. */
@@ -64,7 +64,7 @@ export const routes: Routes = [
   { path: 'welcome', component: WelcomeComponent, canActivate: [welcomeGuard], title: "Welcome | '06 BrakkiesAreBack" },
   { path: 'feed', component: DashboardComponent, canActivate: [checkedInGuard], title: "'06 BrakkiesAreBack | BHS Reunion" },
   { path: 'story', component: StoryComponent, canActivate: [storyGuard], title: "The Story | '06 BrakkiesAreBack" },
-  { path: 'organiser/facebook', component: FacebookPackComponent, canActivate: [organizerGuard], title: "Facebook pack | '06 BrakkiesAreBack" },
+  { path: 'organiser/facebook', component: FacebookPackComponent, canActivate: [superAdminGuard], title: "Facebook pack | '06 BrakkiesAreBack" },
   { path: 'about', component: AboutComponent, title: "About & How it works | '06 BrakkiesAreBack" },
   { path: '**', redirectTo: 'welcome' }
 ];

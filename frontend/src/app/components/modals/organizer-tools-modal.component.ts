@@ -1,6 +1,7 @@
 import { Component, inject, output, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReunionService } from '../../services/reunion.service';
+import { SessionService } from '../../services/session.service';
 import { UiService } from '../../services/ui.service';
 import { friendlyError } from '../../utils/errors';
 import { downloadText, toCsv } from '../../utils/format';
@@ -40,11 +41,13 @@ import { downloadText, toCsv } from '../../utils/format';
           <button type="button" class="btn-secondary w-full text-xs" (click)="openStory()">Preview the Story</button>
         </section>
 
-        <section class="card p-4 space-y-2">
-          <p class="font-bold text-white">📘 Facebook pack</p>
-          <p class="text-xs text-slate-400">Shortlist photos, then download them as a ZIP with captions and who to tag.</p>
-          <button type="button" class="btn-primary w-full text-xs" (click)="go('/organiser/facebook')">Open Facebook pack</button>
-        </section>
+        @if (session.isSuperAdmin()) {
+          <section class="card p-4 space-y-2">
+            <p class="font-bold text-white">📘 Facebook pack <span class="text-[10px] font-bold text-brakke-gold ml-1">SUPER ADMIN</span></p>
+            <p class="text-xs text-slate-400">Shortlist photos, then download them as a ZIP with captions and who to tag.</p>
+            <button type="button" class="btn-primary w-full text-xs" (click)="go('/organiser/facebook')">Open Facebook pack</button>
+          </section>
+        }
 
         <section class="card p-4 space-y-3">
           <p class="font-bold text-white">⬇️ Export (CSV for Excel / Google Sheets)</p>
@@ -66,6 +69,7 @@ import { downloadText, toCsv } from '../../utils/format';
 })
 export class OrganizerToolsModalComponent {
   readonly reunion = inject(ReunionService);
+  readonly session = inject(SessionService);
   private readonly ui = inject(UiService);
   private readonly router = inject(Router);
 

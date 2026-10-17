@@ -5,10 +5,13 @@
 -- Do NOT commit the real code - this repository is public.
 --
 --   select private.set_organizer_code('replace-with-a-long-secret-code');
+--   select private.set_super_admin_code('replace-with-a-different-secret');
 --
--- Organisers then open the app's welcome page > "Organiser login" and enter a
--- name + the code. Organiser accounts are moderators: they can view and delete,
--- but cannot post, upload, heart or vote.
+-- The super admin can do everything organisers can, plus the Facebook pack.
 --
--- To remove an organiser from SQL (they are logged out):
---   delete from public.profiles where display_name = 'Werner – Organiser' and is_organizer;
+-- Organisers then open the app's welcome page > "Organiser login" and enter the
+-- code. Organiser accounts are moderators: they can view and delete, but cannot
+-- post, upload, heart or vote.
+--
+-- To end all organiser sessions from SQL (everyone must log in again):
+--   delete from public.profiles where is_organizer;

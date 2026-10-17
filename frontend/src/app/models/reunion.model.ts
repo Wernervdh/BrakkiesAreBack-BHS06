@@ -3,6 +3,8 @@ export interface Profile {
   created_at: string;
   display_name: string;
   is_organizer: boolean;
+  /** Organiser logged in with the super admin code: can also build the Facebook pack. */
+  is_super_admin?: boolean;
 }
 
 export interface Photo {
