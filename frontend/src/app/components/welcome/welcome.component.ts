@@ -91,7 +91,6 @@ import { isValidEmail, isValidFullName, normalizeDisplayName } from '../../utils
               <span>
                 I understand that photos and notes I post are visible to everyone at the reunion, and that the
                 organisers may share them (for example in the class Facebook group).
-                <a routerLink="/about" class="text-brakke-gold underline underline-offset-2">Read more</a>
               </span>
             </label>
 
