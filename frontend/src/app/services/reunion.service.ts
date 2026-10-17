@@ -3,6 +3,7 @@ import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supab
 import { STORAGE_BUCKET, SupabaseService } from './supabase.service';
 import { SessionService } from './session.service';
 import {
+  ActivityEntry,
   Message,
   MessageCategory,
   Photo,
@@ -444,6 +445,23 @@ export class ReunionService {
         if (removeError) throw removeError;
       }
     }
+  }
+
+  /**
+   * Super admin only (RLS): activity log entries, newest first.
+   * `beforeId` pages back in time; `afterId` fetches only newer entries.
+   */
+  async fetchActivity(options: { beforeId?: number; afterId?: number; limit?: number } = {}): Promise<ActivityEntry[]> {
+    let query = this.supabase
+      .from('activity_log')
+      .select('*')
+      .order('id', { ascending: false })
+      .limit(options.limit ?? 200);
+    if (options.beforeId) query = query.lt('id', options.beforeId);
+    if (options.afterId) query = query.gt('id', options.afterId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data as ActivityEntry[];
   }
 
   /** Organisers: add / remove a photo from the Facebook shortlist. */

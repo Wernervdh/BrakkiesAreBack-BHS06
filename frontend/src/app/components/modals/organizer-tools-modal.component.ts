@@ -47,6 +47,11 @@ import { downloadText, toCsv } from '../../utils/format';
             <p class="text-xs text-slate-400">Shortlist photos, then download them as a ZIP with captions and who to tag.</p>
             <button type="button" class="btn-primary w-full text-xs" (click)="go('/organiser/facebook')">Open Facebook pack</button>
           </section>
+          <section class="card p-4 space-y-2">
+            <p class="font-bold text-white">🧾 Activity log <span class="text-[10px] font-bold text-brakke-gold ml-1">SUPER ADMIN</span></p>
+            <p class="text-xs text-slate-400">Everything that happened: log-ins, posts, deletes, hearts, votes, tags and admin actions.</p>
+            <button type="button" class="btn-secondary w-full text-xs" (click)="go('/organiser/activity')">Open activity log</button>
+          </section>
         }
 
         <section class="card p-4 space-y-3">

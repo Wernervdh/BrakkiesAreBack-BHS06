@@ -6,6 +6,7 @@ import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { AboutComponent } from './components/about/about.component';
 import { StoryComponent } from './components/story/story.component';
 import { FacebookPackComponent } from './components/organizer/facebook-pack.component';
+import { ActivityLogComponent } from './components/organizer/activity-log.component';
 import { ReunionService } from './services/reunion.service';
 
 /** /feed requires a checked-in guest. */
@@ -65,6 +66,7 @@ export const routes: Routes = [
   { path: 'feed', component: DashboardComponent, canActivate: [checkedInGuard], title: "'06 BrakkiesAreBack | BHS Reunion" },
   { path: 'story', component: StoryComponent, canActivate: [storyGuard], title: "The Story | '06 BrakkiesAreBack" },
   { path: 'organiser/facebook', component: FacebookPackComponent, canActivate: [superAdminGuard], title: "Facebook pack | '06 BrakkiesAreBack" },
+  { path: 'organiser/activity', component: ActivityLogComponent, canActivate: [superAdminGuard], title: "Activity log | '06 BrakkiesAreBack" },
   { path: 'about', component: AboutComponent, title: "About & How it works | '06 BrakkiesAreBack" },
   { path: '**', redirectTo: 'welcome' }
 ];

@@ -72,3 +72,16 @@ export const MESSAGE_MAX_LENGTH = 500;
 export const CAPTION_MAX_LENGTH = 140;
 
 export const MAX_TAGS = 20;
+
+/** One row of the activity log (readable by the super admin only). */
+export interface ActivityEntry {
+  id: number;
+  at: string;
+  category: 'session' | 'security' | 'content' | 'reaction' | 'tag' | 'moderation' | 'admin';
+  action: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  actor_role: 'guest' | 'organiser' | 'super admin' | null;
+  subject_id: string | null;
+  summary: string;
+}

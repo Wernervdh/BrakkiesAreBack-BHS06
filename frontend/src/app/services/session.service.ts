@@ -151,7 +151,7 @@ export class SessionService {
       if (organiserId) {
         await this.supabase.from('profiles').delete().eq('id', organiserId);
       } else {
-        await this.supabase.rpc('end_session');
+        await this.supabase.rpc('end_session', { p_reason: reason === 'inactive' ? 'inactive' : 'logged_out' });
       }
       await this.supabase.auth.signOut();
     } finally {

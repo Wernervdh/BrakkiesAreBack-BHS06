@@ -89,6 +89,11 @@ import { CrestComponent } from '../shared/crest.component';
             <li>You can be tagged in photos and notes only after you've checked in, and you can remove your own tag at any time.</li>
             <li>Only you and the organisers can delete your posts. Nobody can post in your name.</li>
             <li>If an organiser removes a guest, everything that guest posted is deleted too.</li>
+            <li>
+              The organisers keep a private activity log of what happens in the app (for example who posted or deleted
+              something). It contains no emails, photos or note texts. If you use "Leave &amp; delete my data", your name is
+              removed from it.
+            </li>
             <li>Want something removed after the event? Ask the organisers.</li>
           </ul>
         </section>
